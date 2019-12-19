@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection, Result};
 
 
@@ -40,7 +40,13 @@ impl Database {
 
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Database> {
         let connection = Connection::open(path)?;
-        connection.init_db?;
-        Ok(Database{ connection })
+        let database = Database { connection };
+        database.init_db()?;
+        Ok(database)
     }
+
+//    pub fn add_file<P: AsRef<Path>>(&self, paths: &[P]) -> Result<()> {
+//        self.connection.execute("INSERT INTO File (path) values ?", paths)?;
+//        Ok(())
+//    }
 }
