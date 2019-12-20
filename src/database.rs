@@ -1,11 +1,17 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection, Result, ToSql};
 use rusqlite::types::ToSqlOutput;
 
 
 #[derive(Debug)]
-pub struct File<'a> {
-    pub path: &'a Path,
+pub struct File {
+    pub path: PathBuf,
+}
+
+impl File {
+    pub fn new(path: &Path) -> File {
+        File { path: path.canonicalize().unwrap() }
+    }
 }
 
 pub struct Database {
@@ -51,7 +57,7 @@ impl Database {
     }
 }
 
-impl<'a> ToSql for File<'a> {
+impl ToSql for File {
     fn to_sql(&self) -> Result<ToSqlOutput> {
         // The path must be convertible to UTF-8 as we're storing this in a DB.
         Ok(ToSqlOutput::from(self.path.to_str().unwrap()))

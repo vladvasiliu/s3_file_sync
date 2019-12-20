@@ -29,7 +29,7 @@ fn handle_event(event: Event, db: &database::Database) {
     match event.kind {
         EventKind::Create(CreateKind::Any) => {
             // File creation should only return one path, hence we can safely use the first element.
-            let file = File { path: &event.paths[0] };
+            let file = File::new(&event.paths[0]);
             println!("files: {:?}", file);
             match db.add_files(&[file]) {
                 Ok(_) => {},
