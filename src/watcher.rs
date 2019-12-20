@@ -1,7 +1,7 @@
 extern crate crossbeam_channel;
 extern crate notify;
 
-use notify::{RecommendedWatcher, RecursiveMode, Result, Watcher, Event, ReadDirectoryChangesWatcher};
+use notify::{RecommendedWatcher, RecursiveMode, Result, Watcher, Event};
 use std::path::Path;
 use std::time::Duration;
 use crossbeam_channel::{unbounded, Receiver};
@@ -9,7 +9,7 @@ use crossbeam_channel::{unbounded, Receiver};
 
 pub struct FileWatcher {
     pub rx: Receiver<Result<Event>>,
-    watcher: ReadDirectoryChangesWatcher,
+    pub watcher : RecommendedWatcher,
 }
 
 

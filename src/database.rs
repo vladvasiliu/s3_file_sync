@@ -1,10 +1,11 @@
-use std::path::{Path, PathBuf};
-use rusqlite::{params, Connection, Result};
+use std::path::Path;
+use rusqlite::{params, Connection, Result, ToSql};
+use rusqlite::types::ToSqlOutput;
 
 
 #[derive(Debug)]
-pub struct File {
-    filename: String,
+pub struct File<'a> {
+    pub path: &'a Path,
 }
 
 pub struct Database {
@@ -45,8 +46,14 @@ impl Database {
         Ok(database)
     }
 
-//    pub fn add_file<P: AsRef<Path>>(&self, paths: &[P]) -> Result<()> {
-//        self.connection.execute("INSERT INTO File (path) values ?", paths)?;
-//        Ok(())
-//    }
+    pub fn add_files(&self, paths: &[File]) -> Result<usize> {
+        self.connection.execute("INSERT INTO File (path) values (?)", paths)
+    }
+}
+
+impl<'a> ToSql for File<'a> {
+    fn to_sql(&self) -> Result<ToSqlOutput> {
+        // The path must be convertible to UTF-8 as we're storing this in a DB.
+        Ok(ToSqlOutput::from(self.path.to_str().unwrap()))
+    }
 }
