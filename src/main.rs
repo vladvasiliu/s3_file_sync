@@ -38,7 +38,6 @@ fn handle_event(event: Event, db: &database::Database) {
                 Err(err) => println!("Failed to add file to database: {:?}", err),
             }
         },
-//        _ => println!("Something else: {:?}", event),
         _ => {},
     }
 }

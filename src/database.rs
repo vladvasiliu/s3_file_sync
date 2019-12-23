@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
-use rusqlite::{params, Connection, Result, ToSql};
-use rusqlite::types::ToSqlOutput;
+use rusqlite::{params, Connection, Result, OpenFlags};
 use chrono::{DateTime, Utc};
 
 
@@ -29,33 +28,25 @@ pub struct Database {
 
 impl Database {
     pub fn init_db(&self) -> Result<()> {
-        self.connection.execute(
-            "CREATE TABLE IF NOT EXISTS File (
-                    path            TEXT PRIMARY KEY,
-                    first_seen_date TEXT NOT NULL,
-                    uploaded_date   TEXT,
-                    deleted_date    TEXT
-        )",
-            params![],
-        )?;
-        self.connection.execute(
-            "CREATE INDEX IF NOT EXISTS file_uploaded ON File (\
-                    uploaded_date
-                  )",
-            params![],
-        )?;
-        self.connection.execute(
-            "CREATE INDEX IF NOT EXISTS file_not_deleted ON File (\
-                    deleted_date
-                  )
-                  WHERE deleted_date IS NULL and uploaded_date IS NOT NULL",
-            params![],
-        )?;
-        Ok(())
+        self.connection.execute_batch(
+            "BEGIN;
+                  CREATE TABLE IF NOT EXISTS File (
+                          path            TEXT PRIMARY KEY,
+                          first_seen_date TEXT NOT NULL,
+                          uploaded_date   TEXT,
+                          deleted_date    TEXT
+                  );
+                  CREATE INDEX IF NOT EXISTS file_uploaded ON File ( uploaded_date );
+                  CREATE INDEX IF NOT EXISTS file_not_deleted ON File ( deleted_date )
+                          WHERE deleted_date IS NULL and uploaded_date IS NOT NULL;
+                  COMMIT;"
+        )
     }
 
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Database> {
-        let connection = Connection::open(path)?;
+        let connection = Connection::open_with_flags(
+            path,
+            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX)?;
         let database = Database { connection };
         database.init_db()?;
         Ok(database)
