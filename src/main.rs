@@ -2,9 +2,10 @@ extern crate chrono;
 use notify::Event;
 use notify::event::{EventKind, CreateKind};
 
-use crate::database::File;
+use crate::file::File;
 
 mod database;
+mod file;
 mod watcher;
 
 
