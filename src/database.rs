@@ -1,16 +1,25 @@
 use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection, Result, ToSql};
 use rusqlite::types::ToSqlOutput;
+use chrono::{DateTime, Utc};
 
 
 #[derive(Debug)]
 pub struct File {
     pub path: PathBuf,
+    pub first_seen_date: DateTime<Utc>,
+    pub uploaded_date: Option<DateTime<Utc>>,
+    pub deleted_date: Option<DateTime<Utc>>,
 }
 
 impl File {
     pub fn new(path: &Path) -> File {
-        File { path: path.canonicalize().unwrap() }
+        File {
+            path: path.canonicalize().unwrap(),
+            first_seen_date: Utc::now(),
+            uploaded_date: None,
+            deleted_date: None,
+        }
     }
 }
 
@@ -22,24 +31,24 @@ impl Database {
     pub fn init_db(&self) -> Result<()> {
         self.connection.execute(
             "CREATE TABLE IF NOT EXISTS File (
-            path            TEXT PRIMARY KEY,
-            first_seen_date TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            uploaded        TEXT,
-            deleted         TEXT
+                    path            TEXT PRIMARY KEY,
+                    first_seen_date TEXT NOT NULL,
+                    uploaded_date   TEXT,
+                    deleted_date    TEXT
         )",
             params![],
         )?;
         self.connection.execute(
             "CREATE INDEX IF NOT EXISTS file_uploaded ON File (\
-                    uploaded
+                    uploaded_date
                   )",
             params![],
         )?;
         self.connection.execute(
             "CREATE INDEX IF NOT EXISTS file_not_deleted ON File (\
-                    deleted
+                    deleted_date
                   )
-                  WHERE deleted is null and uploaded is not null",
+                  WHERE deleted_date IS NULL and uploaded_date IS NOT NULL",
             params![],
         )?;
         Ok(())
@@ -52,14 +61,8 @@ impl Database {
         Ok(database)
     }
 
-    pub fn add_files(&self, paths: &[File]) -> Result<usize> {
-        self.connection.execute("INSERT INTO File (path) values (?)", paths)
-    }
-}
-
-impl ToSql for File {
-    fn to_sql(&self) -> Result<ToSqlOutput> {
-        // The path must be convertible to UTF-8 as we're storing this in a DB.
-        Ok(ToSqlOutput::from(self.path.to_str().unwrap()))
+    pub fn add_file(&self, file: &File) -> Result<usize> {
+        self.connection.execute("INSERT INTO File (path, first_seen_date) values (?1, ?2)",
+                                params![&file.path.to_str().unwrap(), &file.first_seen_date])
     }
 }

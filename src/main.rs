@@ -1,5 +1,7 @@
+extern crate chrono;
 use notify::Event;
 use notify::event::{EventKind, CreateKind};
+
 use crate::database::File;
 
 mod database;
@@ -31,7 +33,7 @@ fn handle_event(event: Event, db: &database::Database) {
             // File creation should only return one path, hence we can safely use the first element.
             let file = File::new(&event.paths[0]);
             println!("files: {:?}", file);
-            match db.add_files(&[file]) {
+            match db.add_file(&file) {
                 Ok(_) => {},
                 Err(err) => println!("Failed to add file to database: {:?}", err),
             }

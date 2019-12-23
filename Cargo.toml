@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 crossbeam-channel = "0.3.8"
 notify = { version = "5.0.0-pre.1", features = ["serde"] }
-rusqlite = { version = "0.21.0", features = ["chrono", "bundled"] }
+rusqlite = { version = "0.21.0", features = ["bundled", "chrono"] }
+chrono = { version = "0.4", features = ["serde"] }
