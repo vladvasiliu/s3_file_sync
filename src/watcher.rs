@@ -20,12 +20,21 @@ pub struct FileWatcher {
 
 impl  FileWatcher {
     pub fn run<P: AsRef<Path>>(db: database::Database, paths: &[P], delay: u64 ) {
-//        let db = database::Database::open("db.sqlite3").unwrap();
-//        let paths =  ["."];
-        let file_watcher = FileWatcher::new(&paths, delay).unwrap();
+        let (tx, rx) = unbounded();
+        // Automatically select the best implementation
+        let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(delay))
+                                                            .unwrap();
+
+        // Add a path to be watched
+        for path in paths {
+            match watcher.watch(path, RecursiveMode::Recursive) {
+                Ok(()) => {},
+                Err(err) => println!("Cannot watch path : {:?}", err),
+            }
+        }
 
         loop {
-            match file_watcher.rx.recv() {
+            match rx.recv() {
                 // Ok(event) =>  println!("changed: {:?}", event),
                 Ok(event) => {
                     let event = event.unwrap();
@@ -36,18 +45,6 @@ impl  FileWatcher {
                 },
             };
         }
-    }
-
-    pub fn new<P: AsRef<Path>>(paths: &[P], delay: u64) -> Result<FileWatcher> {
-        let (tx, rx) = unbounded();
-        // Automatically select the best implementation
-        let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(delay))?;
-
-        // Add a path to be watched
-        for path in paths {
-            watcher.watch(path, RecursiveMode::Recursive)?;
-        }
-        Ok(FileWatcher { rx, watcher })
     }
 
     pub fn handle_event(event: Event, db: &database::Database) {
