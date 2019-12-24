@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use rusqlite::{params, Connection, Result, OpenFlags};
+use rusqlite::{params, Connection, Result, OpenFlags, NO_PARAMS};
 use crate::file::File;
 
 
@@ -37,5 +37,14 @@ impl Database {
     pub fn add_file(&self, file: &File) -> Result<usize> {
         self.connection.execute("INSERT INTO File (path, first_seen_date) values (?1, ?2)",
                                 params![&file.path.to_str().unwrap(), &file.first_seen_date])
+    }
+
+    pub fn files_to_upload(&self) -> Result<()> {
+        let mut statement = self.connection.prepare_cached(
+            "SELECT * FROM File
+                   WHERE uploaded_date IS NULL")?;
+        let mut rows = statement.query(NO_PARAMS)?;
+        println!("Cols: {:?}", rows.column_names());
+        Ok(())
     }
 }
