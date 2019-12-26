@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use log::{trace, warn};
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, Result, OpenFlags, NO_PARAMS, Row};
 
@@ -60,37 +61,42 @@ impl Database {
                                 params![&file.path.to_str().unwrap(), &file.first_seen_date])
     }
 
-    pub fn files_to_upload(&self) -> Result<()> {
+    pub fn files_to_upload(&self) -> Result<Vec<File>> {
         let mut statement = self.connection.prepare_cached(
-            "SELECT path, first_seen_date, uploaded_date, deleted_date FROM File
-                   WHERE uploaded_date IS NULL")?;
+            "SELECT * FROM File WHERE uploaded_date IS NULL")?;
         let mut rows = statement.query(NO_PARAMS)?;
 
-        while let row = rows.next() {
-            match row {
+        let mut files: Vec<File> = Vec::new();
+
+        loop {
+            match rows.next() {
+                Ok(None) => break,
                 Ok(Some(row)) => {
-                    file_from_row(row);
+                    match file_from_row(row) {
+                        Ok(file) => {
+                            trace!("Loaded file: {:?}", file);
+                            files.push(file);
+                        },
+                        Err(err) => {
+                            let file_path: String = row.get_unwrap("path");
+                            warn!("Failed to load file '{}' from DB. Error: {:?}.", file_path, err);
+                        }
+                    }
                 },
-                Ok(None) => {
-                    println!("We're done here");
-                    break;
-                },
-                Err(err) => println!("Got some error: {:?}", err)
-            }
+                Err(err) => warn!("Error looking for files: {:?}", err)
+            };
         }
-        Ok(())
+
+        Ok(files)
     }
 }
 
-fn file_from_row(row: &Row) {
+fn file_from_row(row: &Row) -> Result<File> {
     let path_str: String = row.get_unwrap("path");
-    let first_seen_date: DateTime<Utc> = row.get_unwrap("first_seen_date");
-    println!("{:?}, {:?}", path_str, first_seen_date)
+    Ok(File {
+        path: PathBuf::from(path_str),
+        first_seen_date: row.get("first_seen_date")?,
+        uploaded_date: row.get("uploaded_date")?,
+        deleted_date: row.get("deleted_date")?,
+    })
 }
-
-//            Ok(File {
-//                path: PathBuf::from(Path::new(row.get(0)?)),
-//                first_seen_date: row.get_unwrap(1),
-//                uploaded_date: row.get_unwrap(2),
-//                deleted_date: row.get_unwrap(3),
-//            })
