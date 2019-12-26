@@ -9,7 +9,6 @@ use notify::{RecommendedWatcher, RecursiveMode, Result, Watcher, Event};
 use notify::event::{EventKind, CreateKind};
 
 use crate::database;
-use crate::file::File;
 
 
 pub struct FileWatcher {

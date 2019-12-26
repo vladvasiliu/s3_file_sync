@@ -1,7 +1,26 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use rusqlite::{params, Connection, Result, OpenFlags, NO_PARAMS};
-use crate::file::File;
+use chrono::{DateTime, Utc};
+use rusqlite::{params, Connection, Result, OpenFlags, NO_PARAMS, Row};
+
+#[derive(Debug)]
+pub struct File {
+    pub path: PathBuf,
+    pub first_seen_date: DateTime<Utc>,
+    pub uploaded_date: Option<DateTime<Utc>>,
+    pub deleted_date: Option<DateTime<Utc>>,
+}
+
+impl File {
+    pub fn new(path: &Path) -> File {
+        File {
+            path: path.canonicalize().unwrap(),
+            first_seen_date: Utc::now(),
+            uploaded_date: None,
+            deleted_date: None,
+        }
+    }
+}
 
 
 pub struct Database {
@@ -28,7 +47,9 @@ impl Database {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Database> {
         let connection = Connection::open_with_flags(
             path,
-            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX)?;
+            OpenFlags::SQLITE_OPEN_READ_WRITE |
+                OpenFlags::SQLITE_OPEN_CREATE |
+                OpenFlags::SQLITE_OPEN_FULL_MUTEX)?;
         let database = Database { connection };
         database.init_db()?;
         Ok(database)
@@ -41,10 +62,35 @@ impl Database {
 
     pub fn files_to_upload(&self) -> Result<()> {
         let mut statement = self.connection.prepare_cached(
-            "SELECT * FROM File
+            "SELECT path, first_seen_date, uploaded_date, deleted_date FROM File
                    WHERE uploaded_date IS NULL")?;
         let mut rows = statement.query(NO_PARAMS)?;
-        println!("Cols: {:?}", rows.column_names());
+
+        while let row = rows.next() {
+            match row {
+                Ok(Some(row)) => {
+                    file_from_row(row);
+                },
+                Ok(None) => {
+                    println!("We're done here");
+                    break;
+                },
+                Err(err) => println!("Got some error: {:?}", err)
+            }
+        }
         Ok(())
     }
 }
+
+fn file_from_row(row: &Row) {
+    let path_str: String = row.get_unwrap("path");
+    let first_seen_date: DateTime<Utc> = row.get_unwrap("first_seen_date");
+    println!("{:?}, {:?}", path_str, first_seen_date)
+}
+
+//            Ok(File {
+//                path: PathBuf::from(Path::new(row.get(0)?)),
+//                first_seen_date: row.get_unwrap(1),
+//                uploaded_date: row.get_unwrap(2),
+//                deleted_date: row.get_unwrap(3),
+//            })
