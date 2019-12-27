@@ -5,10 +5,12 @@ use std::path::Path;
 use std::time::Duration;
 
 use crossbeam_channel::{unbounded, Receiver};
+use log::{debug, warn};
 use notify::{RecommendedWatcher, RecursiveMode, Result, Watcher, Event};
 use notify::event::{EventKind, CreateKind};
 
 use crate::database;
+use crate::database::File;
 
 
 pub struct FileWatcher {
@@ -28,7 +30,7 @@ impl  FileWatcher {
         for path in paths {
             match watcher.watch(path, RecursiveMode::Recursive) {
                 Ok(()) => {},
-                Err(err) => println!("Cannot watch path : {:?}", err),
+                Err(err) => warn!("Cannot watch path : {:?}", err),
             }
         }
 
@@ -40,7 +42,7 @@ impl  FileWatcher {
                     FileWatcher::handle_event(event, &db)
                 }
                 Err(err) => {
-                    println!("watch error: {:?}", err);
+                    warn!("watch error: {:?}", err);
                 },
             };
         }
@@ -51,10 +53,10 @@ impl  FileWatcher {
             EventKind::Create(CreateKind::Any) => {
                 // File creation should only return one path, hence we can safely use the first element.
                 let file = File::new(&event.paths[0]);
-                println!("files: {:?}", file);
+                debug!("Detected file: {:?}", file);
                 match db.add_file(&file) {
                     Ok(_) => {},
-                    Err(err) => println!("Failed to add file to database: {:?}", err),
+                    Err(err) => warn!("Failed to add file to database: {:?}", err),
                 }
             },
             _ => {},
