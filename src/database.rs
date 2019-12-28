@@ -61,6 +61,25 @@ impl Database {
                                 params![&file.path.to_str().unwrap(), &file.first_seen_date])
     }
 
+//    pub fn populate(&mut self) -> Result<()> {
+//        let tx = self.connection.transaction()?;
+//        {
+//            let mut stmt = tx.prepare("INSERT INTO File (path, first_seen_date) values (?1, ?2)")?;
+//            let mut x = 0;
+//            let update = "2020-02-02T02:02:02Z";
+//            while x < 1_000_000 {
+//                let base_name = format!("toto_{:06}", x);
+//                stmt.execute(params![&base_name, &update])?;
+//                x += 1;
+//                if x % 10_000 == 0 {
+//                    info!("Inserted {}", x);
+//                }
+//            }
+//        }
+//        tx.commit()?;
+//        Ok(())
+//    }
+
     pub fn files_to_upload(&self) -> Result<Vec<File>> {
         let mut statement = self.connection.prepare_cached(
             "SELECT * FROM File WHERE uploaded_date IS NULL")?;
