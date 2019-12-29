@@ -6,16 +6,17 @@ use std::time::Duration;
 
 use crossbeam_channel::{unbounded, Sender, Receiver};
 use log::{debug, info, warn};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, Result, Event};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, Result as NotifyResult, Event};
 use notify::event::{EventKind, CreateKind};
 
 use crate::database::{File, Database};
+use crate::error::Result;
 
 
 pub struct FileWatcher {
     db: Database,
     upload_tx: Sender<File>,
-    watcher_rx: Receiver<Result<Event>>,
+    watcher_rx: Receiver<NotifyResult<Event>>,
     _watcher: RecommendedWatcher,
 }
 

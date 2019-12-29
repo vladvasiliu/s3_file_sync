@@ -4,6 +4,7 @@ use crate::watcher::FileWatcher;
 use crossbeam_channel::unbounded;
 
 mod database;
+mod error;
 mod watcher;
 
 
