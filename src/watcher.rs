@@ -1,7 +1,7 @@
 extern crate crossbeam_channel;
 extern crate notify;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crossbeam_channel::{unbounded, Sender, Receiver};
@@ -10,7 +10,7 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher, Result as NotifyResult,
 use notify::event::{EventKind, CreateKind};
 
 use crate::database::{File, Database};
-use crate::error::Result;
+use crate::error::{Result, Error};
 
 
 pub struct FileWatcher {
@@ -36,32 +36,14 @@ impl  FileWatcher {
         // * It is a directory and it is readable
         // * Its canonical path is UTF-8
         for path in paths {
-            if !path.as_ref().is_dir() {
-                warn!("Watched paths must be directories and readable. Ignoring: {}",
-                      path.as_ref().display());
-                continue;
-            }
-
-            match path.as_ref().canonicalize() {
-                Ok(canonical_path) => {
-                    match canonical_path.to_str() {
-                        Some(p) => {
-                            match _watcher.watch(&canonical_path,
-                                                 RecursiveMode::Recursive) {
-                                Ok(()) => {info!("Watching path: '{}'", canonical_path.display())},
-                                Err(err) => warn!("Failed to watch path '{}': {:?}",
-                                                  path.as_ref().display(), err),
-                            }
-                        },
-                        None => {
-                            warn!("Ignoring non-UTF8 path: {}", path.as_ref().display());
-                        }
+            match is_path_valid(path) {
+                Ok(p) => {
+                    match _watcher.watch(&p, RecursiveMode::Recursive) {
+                        Ok(()) => info!("Watching path: {}", p.display()),
+                        Err(err) => warn!("Failed to watch path: {}", err),
                     }
-                },
-                Err(err) => {
-                    warn!("Ignoring '{}'; cannot get canonical path: {:?}",
-                          path.as_ref().display(), err)
                 }
+                Err(err) => warn!("Ignoring path. {}", err)
             }
         }
 
@@ -101,5 +83,26 @@ impl  FileWatcher {
             },
             _ => {},
         }
+    }
+}
+
+
+/// Only paths that are valid will be watched.
+/// A path is valid if:
+/// * It is a directory and it is readable
+/// * Its canonical path is UTF-8
+fn is_path_valid<P: AsRef<Path>>(path: &P) -> Result<PathBuf> {
+    if !path.as_ref().is_dir() {
+        return Err(Error::not_dir(path));
+    }
+
+    match path.as_ref().canonicalize() {
+        Ok(canonical_path) => {
+            match canonical_path.to_str() {
+                Some(_) => Ok(canonical_path),
+                None => Err(Error::not_utf8(path)),
+            }
+        },
+        Err(err) => Err(Error::not_canon(path, err)),
     }
 }

@@ -41,7 +41,7 @@ impl Database {
                   CREATE INDEX IF NOT EXISTS file_uploaded ON File ( uploaded_date );
                   CREATE INDEX IF NOT EXISTS file_not_deleted ON File ( deleted_date )
                           WHERE deleted_date IS NULL and uploaded_date IS NOT NULL;
-                  COMMIT;"
+              COMMIT;"
         )
     }
 
