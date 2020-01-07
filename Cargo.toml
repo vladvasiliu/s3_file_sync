@@ -7,9 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-crossbeam-channel = "0.3.9"
-notify = { version = "5.0.0-pre.1", features = ["serde"] }
-rusqlite = { version = "0.21.0", features = ["bundled", "chrono"] }
 chrono = { version = "0.4", features = ["serde"] }
-log = { version = "0.4" }
+crossbeam-channel = "0.4.0"
 fern = { version = "0.5" }
+log = { version = "0.4" }
+notify = { version = "5.0.0-pre.2", features = ["serde"] }
+rusoto_core = { version = "0.42.0" }
+rusoto_s3 = { version = "0.42.0" }
+rusqlite = { version = "0.21.0", features = ["bundled", "chrono"] }
+tokio = { version = "0.1.22" }
+#tokio = { version = "0.2", features = ["rt-core", "fs", "io-util"] }

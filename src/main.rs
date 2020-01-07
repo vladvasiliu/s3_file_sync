@@ -2,11 +2,12 @@ use log::{info};
 use std::thread;
 use crate::watcher::FileWatcher;
 use crossbeam_channel::unbounded;
+use crate::uploader::Uploader;
 
 mod database;
 mod error;
+mod uploader;
 mod watcher;
-
 
 fn main() {
     setup_logger().unwrap();
@@ -21,20 +22,15 @@ fn main() {
         file_watcher.run();
     });
 
-
-//    let uploader_thread = thread::spawn( || {
-//        let db = database::Database::open("db.sqlite3").unwrap();
-//        loop {
-//            match db.files_to_upload() {
-//                Ok(files) => debug!("Files to upload: {}", files.len()),
-//                Err(err) => error!("Couldn't get files to upload: {:?}", err)
-//            }
-//            thread::sleep(Duration::from_secs(2))
-//        }
-//    });
+    let uploader_db = database::Database::open("db.sqlite3").unwrap();
+    let uploader = Uploader::new(
+        "test-s3-file-sync",
+        "eu-west-3",
+        upload_rx,
+        uploader_db,
+    ).unwrap();
 
     watcher_thread.join().expect("Failed to join watcher thread.");
-//    uploader_thread.join();
 
 }
 
@@ -49,7 +45,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
                 message
             ))
         })
-        .level(log::LevelFilter::Trace)
+        .level(log::LevelFilter::Info)
         .chain(std::io::stdout())
 //        .chain(fern::log_file("output.log")?)
         .apply()?;

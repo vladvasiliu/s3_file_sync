@@ -52,7 +52,7 @@ impl  FileWatcher {
     }
 
     pub fn run(&self) {
-        while let Some(msg) = self.watcher_rx.recv().ok() {
+        for msg in self.watcher_rx.iter() {
             match msg {
                 Ok(event) if event.kind == EventKind::Create(CreateKind::Any) => {
                     self.handle_event(event);
@@ -69,7 +69,7 @@ impl  FileWatcher {
         let file = File::new(&event.paths[0]);
         debug!("Detected file: {:?}", event.paths[0].display());
         match self.db.add_file(&file) {
-            Ok(_) => {},
+            Ok(_) => self.upload_tx.send(file).unwrap(),
             Err(err) => warn!("Failed to add file to database: {:?}", err),
         }
     }
