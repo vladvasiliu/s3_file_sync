@@ -68,30 +68,20 @@ impl Uploader {
 
     fn upload_file_parts(&self, filename: &str, upload_id: &str) -> Result<CompletedMultipartUpload> {
         let mut file = FSFile::open(filename).unwrap();
-
-        let mut part_number = 1;
-
+        let mut part_number = 0;
         let mut completed_parts: Vec<CompletedPart> = Vec::new();
 
         loop {
             let mut buffer = vec![0; self.part_size];
+            part_number += 1;
 
             match file.read(&mut buffer) {
+                Ok(0) => break,
                 Ok(len) => {
-                    if len == 0 {
-                        info!("Done!");
-                        break;
-                    }
                     buffer.truncate(len);
-                    match self.upload_part(buffer, filename, part_number, upload_id) {
-                        Ok(completed_part) => {
-                            completed_parts.push(completed_part);
-                            part_number += 1;
-                        },
-                        Err(err) => {
-                            return Err(err);
-                        }
-                    }
+                    completed_parts.push(
+                        self.upload_part(buffer, filename, part_number, upload_id)?
+                    );
                 },
                 Err(err) => {
                     error!("Error reading file: {}", err);
