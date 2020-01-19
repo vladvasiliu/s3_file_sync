@@ -9,7 +9,7 @@ use std::result::Result as StdResult;
 use std::str::FromStr;
 
 use crossbeam_channel::Receiver;
-use log::{info, warn, error};
+use log::{debug, info, warn, error};
 use rusoto_core::{ByteStream, Region, RusotoError};
 use rusoto_s3::{
     S3Client,
@@ -54,6 +54,7 @@ impl Uploader {
     }
 
     pub fn upload_file(&self, filename: &str) -> Result<()> {
+        info!("Starting upload of {}", filename);
         let upload_id = self.create_multipart_upload(filename)?;
 
         if let Ok(c_mp_u) = self.upload_file_parts(filename, &upload_id) {
@@ -67,7 +68,14 @@ impl Uploader {
     }
 
     fn upload_file_parts(&self, filename: &str, upload_id: &str) -> Result<CompletedMultipartUpload> {
-        let mut file = FSFile::open(filename).unwrap();
+        let mut file: FSFile;
+        match FSFile::open(filename) {
+            Ok(f) => file = f,
+            Err(err) => {
+                warn!("{}", err);
+                return Err(Error::Read(err))
+            },
+        }
         let mut part_number = 0;
         let mut completed_parts: Vec<CompletedPart> = Vec::new();
 
@@ -109,7 +117,7 @@ impl Uploader {
             }).sync() {
             Ok(res) => {
                 let e_tag = res.e_tag.unwrap();
-                info!("Uploaded part {} - etag: {}", part_number, e_tag);
+                debug!("Uploaded part {} - etag: {}", part_number, e_tag);
                 Ok(CompletedPart {
                     part_number: Some(part_number),
                     e_tag: Some(e_tag)
@@ -136,7 +144,7 @@ impl Uploader {
                 }
             ).sync() {
                 Ok(_) => {
-                    info!("Completed upload");
+                    debug!("Completed upload");
                     Ok(())
                 },
                 Err(err) => {
@@ -189,4 +197,3 @@ pub enum Error {
     CompleteMultipartUpload,
     Read(IOError),
 }
-
