@@ -26,7 +26,7 @@ use rusoto_s3::{
 };
 
 use crate::database::{Database, File};
-use self::rusoto_s3::CompletedPart;
+use self::rusoto_s3::{CompletedPart, CompleteMultipartUploadError, UploadPartError};
 
 
 pub struct Uploader {
@@ -56,19 +56,16 @@ impl Uploader {
     }
 
     pub fn upload_file(&self, filename: &str) -> Result<()> {
-        info!("Starting upload of {}", filename);
         let upload_id = self.create_multipart_upload(filename)?;
 
-        match self.upload_file_parts(filename, &upload_id) {
-            Ok(c_mp_u) =>
-            if let Ok(()) = self.complete_multipart_upload(filename, c_mp_u, &upload_id) {
-                info!("Completed upload of {}", filename);
-                return Ok(())
-            },
-            Err(err) => warn!("{}", err),
-        }
-        self.abort_multipart_upload(filename, &upload_id);
-        Err(Error::CompleteMultipartUpload)
+        self.upload_file_parts(filename, &upload_id)
+            .and_then(|c_mp_u| {
+                self.complete_multipart_upload(filename, c_mp_u, &upload_id)
+            })
+            .or_else(|err| {
+                self.abort_multipart_upload(filename, &upload_id);
+                Err(err)
+            })
     }
 
     fn upload_file_parts(&self, filename: &str, upload_id: &str) -> Result<CompletedMultipartUpload> {
@@ -89,7 +86,6 @@ impl Uploader {
                     );
                 },
                 Err(err) => {
-                    error!("Error reading file: {}", err);
                     return Err(Error::Read(err));
                 }
             }
@@ -126,9 +122,8 @@ impl Uploader {
                     e_tag: Some(e_tag)
                 })
             },
-            Err(err) => {
-                error!("Failed to upload part {}: {}", part_number, err);
-                Err(Error::UploadPart)
+            Err(error) => {
+                Err(Error::UploadPart { part_number, error })
             }
         }
     }
@@ -137,24 +132,17 @@ impl Uploader {
                                  filename: &str,
                                  multipart_upload: CompletedMultipartUpload,
                                  upload_id: &str) -> Result<()> {
-            match self.s3_client.complete_multipart_upload(
-                CompleteMultipartUploadRequest {
-                    bucket: self.bucket_name.to_owned(),
-                    key: filename.to_owned(),
-                    multipart_upload: Some(multipart_upload),
-                    upload_id: upload_id.to_owned(),
-                    request_payer: self.request_payer.to_owned(),
-                }
-            ).sync() {
-                Ok(_) => {
-                    debug!("Completed upload");
-                    Ok(())
-                },
-                Err(err) => {
-                    error!("Failed to complete upload: {}", err);
-                    Err(Error::CompleteMultipartUpload)
-                }
+        self.s3_client.complete_multipart_upload(
+            CompleteMultipartUploadRequest {
+                bucket: self.bucket_name.to_owned(),
+                key: filename.to_owned(),
+                multipart_upload: Some(multipart_upload),
+                upload_id: upload_id.to_owned(),
+                request_payer: self.request_payer.to_owned(),
             }
+        ).sync()?;
+        debug!("Completed upload");
+        Ok(())
     }
 
     fn create_multipart_upload(&self, filename: &str) -> Result<String> {
@@ -168,12 +156,11 @@ impl Uploader {
                 Ok(result) => {
                     match result.upload_id {
                         Some(upload_id) => Ok(upload_id),
-                        None => Err(Error::CreateMultipartUpload)
+                        None => Err("Didn't get an upload_id".into())
                     }
                 },
                 Err(err) => {
-                    error!("Failed to create multipart upload for {}: {}", filename, err);
-                    Err(Error::CreateMultipartUpload)
+                    Err(Error::CreateMultipartUpload(err))
                 }
             }
     }
@@ -195,9 +182,10 @@ pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
-    CreateMultipartUpload,
-    UploadPart,
-    CompleteMultipartUpload,
+    CreateMultipartUpload(RusotoError<CreateMultipartUploadError>),
+    UploadPart { part_number: i64, error: RusotoError<UploadPartError> },
+    CompleteMultipartUpload(RusotoError<CompleteMultipartUploadError>),
+    Generic(String),
     Read(IOError),
 }
 
@@ -205,17 +193,29 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::CreateMultipartUpload => write!(f, "Failed to create multipart upload"),
-            Self::UploadPart => write!(f, "Failed to upload part"),
-            Self::CompleteMultipartUpload => write!(f, "Failed to complete multipart upload"),
+            Self::CreateMultipartUpload(err) => write!(f, "Failed to create multipart upload: {}", err),
+            Self::UploadPart{part_number, error} => write!(f, "Failed to upload part {}: {}", part_number, error),
+            Self::CompleteMultipartUpload(err) => write!(f, "Failed to complete multipart upload: {}", err),
             Self::Read(io_error) => write!(f, "Failed to read file: {}", io_error),
+            Self::Generic(msg) => write!(f, "Failed to upload file: {}", msg)
         }
     }
 }
 
-
 impl From<IOError> for Error {
     fn from(err: IOError) -> Self {
         Self::Read(err)
+    }
+}
+
+impl From<RusotoError<CompleteMultipartUploadError>> for Error {
+    fn from(err: RusotoError<CompleteMultipartUploadError>) -> Self {
+        Self::CompleteMultipartUpload(err)
+    }
+}
+
+impl From<&str> for Error {
+    fn from(msg: &str) -> Self {
+        Self::Generic(msg.into())
     }
 }
