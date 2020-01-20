@@ -9,8 +9,8 @@ use std::fmt;
 use std::fs::File as FSFile;
 use std::result::Result as StdResult;
 use std::str::FromStr;
+use std::sync::mpsc::Receiver;
 
-use crossbeam_channel::Receiver;
 use log::{debug, info, warn, error};
 use rusoto_core::{ByteStream, Region, RusotoError};
 use rusoto_s3::{
@@ -51,11 +51,15 @@ impl Uploader {
             db,
             s3_client,
             request_payer: None,
-            part_size: 1024*1024*100,
+            part_size: 1024*1024*100, // 100 MB
         }
     }
 
-    pub fn upload_file(&self, filename: &str) -> Result<()> {
+    pub fn run(&self) {
+
+    }
+
+    fn upload_file(&self, filename: &str) -> Result<()> {
         let upload_id = self.create_multipart_upload(filename)?;
 
         self.upload_file_parts(filename, &upload_id)

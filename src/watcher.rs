@@ -1,22 +1,19 @@
-extern crate crossbeam_channel;
 extern crate notify;
 
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
 
-use crossbeam_channel::{unbounded, Sender, Receiver};
 use log::{debug, info, warn, error};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, Result as NotifyResult, Event};
-use notify::event::{EventKind, CreateKind};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, Result as NotifyResult, DebouncedEvent};
 
-use crate::database::{File, Database};
+use crate::database::{File};
 use crate::error::{Result, Error};
 
 
 pub struct FileWatcher {
-    db: Database,
     upload_tx: Sender<File>,
-    watcher_rx: Receiver<NotifyResult<Event>>,
+    watcher_rx: Receiver<DebouncedEvent>,
     _watcher: RecommendedWatcher,
 }
 
@@ -24,10 +21,9 @@ pub struct FileWatcher {
 impl  FileWatcher {
     pub fn new<P: AsRef<Path>>(paths: &[P],
                                delay: u64,
-                               db: Database,
                                upload_tx: Sender<File>
     ) -> Result<FileWatcher> {
-        let (watcher_tx, watcher_rx) = unbounded();
+        let (watcher_tx, watcher_rx) = channel();
         let mut _watcher: RecommendedWatcher = Watcher::new(watcher_tx,
                                                            Duration::from_secs(delay))?;
 
@@ -44,7 +40,6 @@ impl  FileWatcher {
         }
 
         Ok(FileWatcher {
-            db,
             upload_tx,
             watcher_rx,
             _watcher,
@@ -54,24 +49,23 @@ impl  FileWatcher {
     pub fn run(&self) {
         for msg in self.watcher_rx.iter() {
             match msg {
-                Ok(event) if event.kind == EventKind::Create(CreateKind::Any) => {
-                    self.handle_event(event);
+                DebouncedEvent::Create(path) => {
+                    self.handle_event(path);
                 },
-                Ok(_) => (),
-                Err(err) => warn!("Error watching files: {:?}", err),
+                DebouncedEvent::Error(err, path) => warn!("Error watching files: {:?}", err),
+                _ => {}
             }
         }
         error!("Watcher channel broken. Stopping watcher.")
     }
 
-    fn handle_event(&self, event: Event) {
+    fn handle_event(&self, path: PathBuf) {
         // File creation should only return one path, hence we can safely use the first element.
-        let file = File::new(&event.paths[0]);
-        debug!("Detected file: {:?}", event.paths[0].display());
-        match self.db.add_file(&file) {
-            Ok(_) => self.upload_tx.send(file).unwrap(),
-            Err(err) => warn!("Failed to add file to database: {:?}", err),
-        }
+        let file = File::new(path.as_ref());
+        debug!("Detected file: {}", path.display());
+        self.upload_tx.send(file).unwrap_or_else(|err| {
+            warn!("Failed to notify file detection: {}", err);
+        });
     }
 }
 

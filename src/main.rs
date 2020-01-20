@@ -1,26 +1,25 @@
-use log::{info};
+use log::{info, warn};
 use std::thread;
-//use crate::watcher::FileWatcher;
-use crossbeam_channel::unbounded;
+use std::sync::mpsc::channel;
+use crate::watcher::FileWatcher;
 use crate::uploader::Uploader;
 
 mod database;
 mod error;
 mod uploader;
-//mod watcher;
+mod watcher;
 
 fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    let (upload_tx, upload_rx) = unbounded();
-//    let watcher_db = database::Database::open("db.sqlite3").unwrap();
-//
-//    let file_watcher = FileWatcher::new(&["."], 2, watcher_db, upload_tx).unwrap();
-//
-//    let watcher_thread = thread::spawn(move || {
-//        file_watcher.run();
-//    });
+    let (upload_tx, upload_rx) = channel();
+
+    let file_watcher = FileWatcher::new(&["."], 2, upload_tx).unwrap();
+
+    let watcher_thread = thread::spawn(move || {
+        file_watcher.run();
+    });
 
     let uploader_db = database::Database::open("db.sqlite3").unwrap();
     let uploader = Uploader::new(
@@ -30,7 +29,7 @@ fn main() {
         uploader_db,
     );
 
-//    watcher_thread.join().expect("Failed to join watcher thread.");
+    watcher_thread.join().expect("Failed to join watcher thread.");
 
 }
 
@@ -45,7 +44,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
                 message
             ))
         })
-        .level(log::LevelFilter::Info)
+        .level(log::LevelFilter::Debug)
         .chain(std::io::stdout())
 //        .chain(fern::log_file("output.log")?)
         .apply()?;
