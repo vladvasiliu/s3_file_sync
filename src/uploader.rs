@@ -59,25 +59,20 @@ impl Uploader {
         info!("Starting upload of {}", filename);
         let upload_id = self.create_multipart_upload(filename)?;
 
-        if let Ok(c_mp_u) = self.upload_file_parts(filename, &upload_id) {
+        match self.upload_file_parts(filename, &upload_id) {
+            Ok(c_mp_u) =>
             if let Ok(()) = self.complete_multipart_upload(filename, c_mp_u, &upload_id) {
                 info!("Completed upload of {}", filename);
                 return Ok(())
-            }
+            },
+            Err(err) => warn!("{}", err),
         }
         self.abort_multipart_upload(filename, &upload_id);
         Err(Error::CompleteMultipartUpload)
     }
 
     fn upload_file_parts(&self, filename: &str, upload_id: &str) -> Result<CompletedMultipartUpload> {
-        let mut file: FSFile;
-        match FSFile::open(filename) {
-            Ok(f) => file = f,
-            Err(err) => {
-                warn!("{}", err);
-                return Err(Error::Read(err))
-            },
-        }
+        let mut file = FSFile::open(filename)?;
         let mut part_number = 0;
         let mut completed_parts: Vec<CompletedPart> = Vec::new();
 
@@ -204,4 +199,23 @@ pub enum Error {
     UploadPart,
     CompleteMultipartUpload,
     Read(IOError),
+}
+
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::CreateMultipartUpload => write!(f, "Failed to create multipart upload"),
+            Self::UploadPart => write!(f, "Failed to upload part"),
+            Self::CompleteMultipartUpload => write!(f, "Failed to complete multipart upload"),
+            Self::Read(io_error) => write!(f, "Failed to read file: {}", io_error),
+        }
+    }
+}
+
+
+impl From<IOError> for Error {
+    fn from(err: IOError) -> Self {
+        Self::Read(err)
+    }
 }
