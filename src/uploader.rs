@@ -1,3 +1,5 @@
+extern crate base64;
+extern crate md5;
 extern crate rusoto_core;
 extern crate rusoto_s3;
 
@@ -106,13 +108,19 @@ impl Uploader {
                    filename: &str,
                    part_number: i64,
                    upload_id: &str) -> Result<CompletedPart> {
+        let content_length = body.len() as i64;
+        let digest = md5::compute(&body);
+        let content_md5 = base64::encode(digest.as_ref());
         return match self.s3_client.upload_part(
             UploadPartRequest {
+                part_number,
                 body: Some(body.into()),
+                content_length: Some(content_length),
+                content_md5: Some(content_md5),
                 bucket: self.bucket_name.to_owned(),
                 key: filename.to_owned(),
-                part_number,
                 upload_id: upload_id.to_owned(),
+                request_payer: self.request_payer.to_owned(),
                 ..Default::default()
             }).sync() {
             Ok(res) => {
