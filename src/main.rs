@@ -1,11 +1,10 @@
-use log::{info, warn};
+use log::{info};
 use std::thread;
 use std::sync::mpsc::channel;
 use crate::watcher::FileWatcher;
 use crate::uploader::Uploader;
 
 mod database;
-mod error;
 mod uploader;
 mod watcher;
 

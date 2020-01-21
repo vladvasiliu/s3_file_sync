@@ -3,30 +3,28 @@ extern crate md5;
 extern crate rusoto_core;
 extern crate rusoto_s3;
 
-use std::error::Error as StdError;
-use std::io::{Read, Error as IOError};
-use std::fmt;
+use std::io::Read;
 use std::fs::File as FSFile;
-use std::result::Result as StdResult;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 
-use log::{debug, info, warn, error};
-use rusoto_core::{ByteStream, Region, RusotoError};
+use log::{debug, warn};
+use rusoto_core::Region;
 use rusoto_s3::{
     S3Client,
     S3,
-    PutObjectRequest,
     UploadPartRequest,
     AbortMultipartUploadRequest,
     CreateMultipartUploadRequest,
-    CreateMultipartUploadError,
     CompletedMultipartUpload,
     CompleteMultipartUploadRequest,
+    CompletedPart,
 };
 
+pub mod error;
+
 use crate::database::{Database, File};
-use self::rusoto_s3::{CompletedPart, CompleteMultipartUploadError, UploadPartError};
+use crate::uploader::error::{Error, Result};
 
 
 pub struct Uploader {
@@ -179,47 +177,5 @@ impl Uploader {
             Ok(_) => warn!("Aborted upload of {} (upload id: {})", filename, upload_id),
             Err(err) => warn!("Failed to abort upload of {} (upload id: {}): {}", filename, upload_id, err),
         }
-    }
-}
-
-pub type Result<T> = StdResult<T, Error>;
-
-#[derive(Debug)]
-pub enum Error {
-    CreateMultipartUpload(RusotoError<CreateMultipartUploadError>),
-    UploadPart { part_number: i64, error: RusotoError<UploadPartError> },
-    CompleteMultipartUpload(RusotoError<CompleteMultipartUploadError>),
-    Generic(String),
-    Read(IOError),
-}
-
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::CreateMultipartUpload(err) => write!(f, "Failed to create multipart upload: {}", err),
-            Self::UploadPart{part_number, error} => write!(f, "Failed to upload part {}: {}", part_number, error),
-            Self::CompleteMultipartUpload(err) => write!(f, "Failed to complete multipart upload: {}", err),
-            Self::Read(io_error) => write!(f, "Failed to read file: {}", io_error),
-            Self::Generic(msg) => write!(f, "Failed to upload file: {}", msg)
-        }
-    }
-}
-
-impl From<IOError> for Error {
-    fn from(err: IOError) -> Self {
-        Self::Read(err)
-    }
-}
-
-impl From<RusotoError<CompleteMultipartUploadError>> for Error {
-    fn from(err: RusotoError<CompleteMultipartUploadError>) -> Self {
-        Self::CompleteMultipartUpload(err)
-    }
-}
-
-impl From<&str> for Error {
-    fn from(msg: &str) -> Self {
-        Self::Generic(msg.into())
     }
 }

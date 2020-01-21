@@ -1,14 +1,14 @@
-extern crate notify;
-
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
 
 use log::{debug, info, warn, error};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, Result as NotifyResult, DebouncedEvent};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, DebouncedEvent};
+
+pub mod error;
 
 use crate::database::{File};
-use crate::error::{Result, Error};
+use crate::watcher::error::{Result, Error};
 
 
 pub struct FileWatcher {
@@ -52,7 +52,7 @@ impl  FileWatcher {
                 DebouncedEvent::Create(path) => {
                     self.handle_event(path);
                 },
-                DebouncedEvent::Error(err, path) => warn!("Error watching files: {:?}", err),
+                DebouncedEvent::Error(err, path) => warn!("Error watching files:[{:?}] {:?}", path, err),
                 _ => {}
             }
         }
