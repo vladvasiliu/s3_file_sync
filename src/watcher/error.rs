@@ -23,7 +23,7 @@ pub enum ErrorKind {
     WatcherErr(notify::Error),
 
 //    /// An error raised from std::path
-//    Io(io::Error),
+    Io(io::Error),
 }
 
 #[derive(Debug)]
@@ -67,7 +67,8 @@ impl fmt::Display for Error {
             ErrorKind::NotUTF8 => "The path is not UTF-8".into(),
 //            ErrorKind::NotCanon => "The path cannot be canonicalized".into(),
             ErrorKind::WatcherErr(ref err) => err.description().into(),
-            ErrorKind::NotCanon(ref err) => format!("Cannot canonicalize, I/O Error for path: {:?}", err).into(),
+            ErrorKind::NotCanon(ref err) => format!("Cannot canonicalize, I/O Error for path: {:?}", err),
+            ErrorKind::Io(ref err) => format!("IO error: {}", err),
         };
 
         if let Some(path) = &self.path {
@@ -82,6 +83,15 @@ impl From<notify::Error> for Error {
     fn from(err: notify::Error) -> Self {
         Error {
             kind: ErrorKind::WatcherErr(err),
+            path: None,
+        }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Self {
+        Self {
+            kind: ErrorKind::Io(err),
             path: None,
         }
     }

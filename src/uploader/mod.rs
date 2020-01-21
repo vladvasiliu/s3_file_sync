@@ -6,9 +6,8 @@ extern crate rusoto_s3;
 use std::io::Read;
 use std::fs::File as FSFile;
 use std::str::FromStr;
-use std::sync::mpsc::Receiver;
 
-use log::{debug, warn};
+use log::{debug, warn, info, error};
 use rusoto_core::Region;
 use rusoto_s3::{
     S3Client,
@@ -23,14 +22,11 @@ use rusoto_s3::{
 
 pub mod error;
 
-use crate::database::{Database, File};
 use crate::uploader::error::{Error, Result};
 
 
 pub struct Uploader {
     bucket_name: String,
-    upload_rx: Receiver<File>,
-    db: Database,
     s3_client: S3Client,
     request_payer: Option<String>,
     part_size: usize,
@@ -38,26 +34,20 @@ pub struct Uploader {
 
 
 impl Uploader {
-    pub fn new(bucket_name: &str, region_name: &str, upload_rx: Receiver<File>, db: Database) -> Uploader {
+    pub fn new(bucket_name: &str, region_name: &str) -> Uploader {
         let region = Region::from_str(region_name).unwrap();
         let s3_client = S3Client::new(region);
         let bucket_name: String = bucket_name.into();
 
         Uploader {
             bucket_name,
-            upload_rx,
-            db,
             s3_client,
             request_payer: None,
             part_size: 1024*1024*100, // 100 MB
         }
     }
 
-    pub fn run(&self) {
-
-    }
-
-    fn upload_file(&self, filename: &str) -> Result<()> {
+    pub fn upload_file(&self, filename: &str) -> Result<()> {
         let upload_id = self.create_multipart_upload(filename)?;
 
         self.upload_file_parts(filename, &upload_id)
@@ -104,7 +94,7 @@ impl Uploader {
         let content_length = body.len() as i64;
         let digest = md5::compute(&body);
         let content_md5 = base64::encode(digest.as_ref());
-        return match self.s3_client.upload_part(
+        match self.s3_client.upload_part(
             UploadPartRequest {
                 part_number,
                 body: Some(body.into()),

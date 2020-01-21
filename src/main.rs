@@ -1,10 +1,11 @@
-use log::{info};
+use log::{info, error};
 use std::thread;
 use std::sync::mpsc::channel;
 use crate::watcher::FileWatcher;
 use crate::uploader::Uploader;
+use std::process::exit;
 
-mod database;
+mod controller;
 mod uploader;
 mod watcher;
 
@@ -14,18 +15,18 @@ fn main() {
 
     let (upload_tx, upload_rx) = channel();
 
-    let file_watcher = FileWatcher::new(&["."], 2, upload_tx).unwrap();
+    let file_watcher = FileWatcher::new(&"/home/vlad/tmp", 2, upload_tx).unwrap_or_else(|err| {
+        error!("Gor an error: {}", err);
+        exit(1)
+    });
 
     let watcher_thread = thread::spawn(move || {
         file_watcher.run();
     });
 
-    let uploader_db = database::Database::open("db.sqlite3").unwrap();
     let uploader = Uploader::new(
         "test-s3-file-sync",
         "eu-west-3",
-        upload_rx,
-        uploader_db,
     );
 
     watcher_thread.join().expect("Failed to join watcher thread.");
