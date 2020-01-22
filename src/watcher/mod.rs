@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
 
-use log::{debug, info, warn, error};
+use log::{debug, warn, error};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, DebouncedEvent};
 
 pub mod error;
