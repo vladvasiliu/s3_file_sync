@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
 
-use log::{debug, warn, error};
+use log::{debug, info, warn, error};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, DebouncedEvent};
 
 pub mod error;
@@ -17,7 +17,7 @@ use crate::controller::file::File;
 /// Only one directory tree is watched.
 /// This allows to upload files from each tree to its own directory.
 pub struct FileWatcher {
-    base_path: PathBuf,
+    pub base_path: PathBuf,
     controller_tx: Sender<File>,
     watcher_rx: Receiver<DebouncedEvent>,
     _watcher: RecommendedWatcher,
@@ -32,12 +32,14 @@ impl  FileWatcher {
         let mut canonical_paths = Vec::new();
 
         for path in paths {
-            canonical_paths.push(path.as_ref().canonicalize()?);
+            canonical_paths.push(path.as_ref().canonicalize().or_else(|err| Err(Error::not_canon(path, err)))?);
         }
+
+        let filtered_paths = get_paths(&canonical_paths);
 
         let mut watchers = Vec::new();
 
-        for path in paths {
+        for path in filtered_paths {
             watchers.push(Self::new(&path, watcher_duration, watcher_tx.clone())?)
         }
 
@@ -66,6 +68,7 @@ impl  FileWatcher {
     }
 
     pub fn run(&self) {
+        info!("Started watcher");
         for msg in self.watcher_rx.iter() {
             match msg {
                 DebouncedEvent::Create(path) => {

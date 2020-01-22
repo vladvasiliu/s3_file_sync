@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver};
 
 
 pub mod error;
@@ -9,24 +9,31 @@ use crate::controller::file::File;
 use crate::controller::error::{Result};
 use crate::uploader::Uploader;
 use crate::watcher::FileWatcher;
+use std::thread::Builder;
 
 
 pub struct Controller {
-    uploaders: Vec<Uploader>,
-    watchers: Vec<FileWatcher>,
-    watcher_rx: Receiver<File>,
 }
 
 impl Controller {
-    pub fn new<P: AsRef<Path>>(paths: &[P]) -> Result<Self> {
+    pub fn run<P: AsRef<Path>>(paths: &[P]) -> Result<()> {
         let (watcher_tx, watcher_rx) = channel();
 
-        let watchers = FileWatcher::create_watchers(paths, watcher_tx, 2)?;
+        let uploaders = vec![
+            Uploader::new("test-s3-file-sync", "eu-west-3"),
+        ];
 
-        Ok(Self {
-            uploaders: Vec::new(),
-            watchers,
-            watcher_rx,
-        })
+        let mut watchers = vec![];
+
+        for watcher in FileWatcher::create_watchers(paths, watcher_tx, 2)? {
+            let watcher_thread = Builder::new().name(watcher.base_path.display().to_string()).spawn(move || watcher.run())?;
+            watchers.push(watcher_thread);
+        }
+
+        for thread in watchers {
+            thread.join();
+        }
+
+        Ok(())
     }
 }

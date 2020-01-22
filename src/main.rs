@@ -1,5 +1,5 @@
 use log::{info, error};
-use std::path::Path;
+use std::thread;
 
 mod controller;
 mod uploader;
@@ -9,7 +9,7 @@ fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    match controller::Controller::new(&[Path::new("/some/path")]) {
+    match controller::Controller::run(&[".", "~/temp"]) {
         Ok(_) => info!("Running!"),
         Err(err) => error!("Failed to start controller: {}", err),
     }
@@ -19,10 +19,11 @@ fn setup_logger() -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
-                "[ {} ][ {:22} ][ {:5} ] {}",
+                "[ {} ][ {:5} ][ {:22} ][ {} ] {}",
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.target(),
                 record.level(),
+                record.target(),
+                thread::current().name().unwrap(),
                 message
             ))
         })
