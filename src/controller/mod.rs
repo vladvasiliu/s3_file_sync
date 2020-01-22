@@ -23,7 +23,7 @@ impl Controller {
     pub fn new<P: AsRef<Path>>(paths: &[P]) -> Result<Self> {
         let (watcher_tx, watcher_rx) = channel();
 
-        let watchers = create_watchers(paths, watcher_tx)?;
+        let watchers = create_watchers(paths, watcher_tx, 2)?;
 
         Ok(Self {
             uploaders: Vec::new(),
@@ -31,7 +31,6 @@ impl Controller {
             watcher_rx,
         })
     }
-
 }
 
 
@@ -68,12 +67,23 @@ fn get_paths<P: AsRef<Path>>(paths: &[P]) -> HashSet<&Path> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::path::Path;
+    use std::sync::mpsc::channel;
+    use crate::controller::create_watchers;
+
+    #[test]
+    fn test_create_watchers_fails_with_missing_path() {
+        let paths = [Path::new("/some/path")];
+        let (watcher_tx, _) = channel();
+
+        assert!(create_watchers(&paths, watcher_tx, 2).is_err());
+    }
+
 
     #[test]
     fn test_get_paths() {
+        use std::collections::HashSet;
         use super::get_paths;
-        use std::path::Path;
 
         let paths = vec![
             Path::new("/home/toto/tata"),
