@@ -1,6 +1,3 @@
-use crate::controller::file::File;
-use crate::uploader::Uploader;
-use crate::watcher::FileWatcher;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -10,6 +7,11 @@ use log::{debug, warn, error};
 pub mod error;
 pub mod file;
 
+use crate::controller::file::File;
+use crate::controller::error::{Error, Result};
+use crate::uploader::Uploader;
+use crate::watcher::FileWatcher;
+
 
 struct Controller {
     uploaders: Vec<Uploader>,
@@ -18,16 +20,16 @@ struct Controller {
 }
 
 impl Controller {
-    pub fn new<P: AsRef<Path>>(paths: &[P]) -> Self {
+    pub fn new<P: AsRef<Path>>(paths: &[P]) -> Result<Self> {
         let (watcher_tx, watcher_rx) = channel();
 
-        let watchers = create_watchers(paths, watcher_tx);
+        let watchers = create_watchers(paths, watcher_tx)?;
 
-        Self {
+        Ok(Self {
             uploaders: Vec::new(),
             watchers,
             watcher_rx,
-        }
+        })
     }
 
 }
@@ -36,7 +38,7 @@ impl Controller {
 /// Creates a vector of Watchers for all the directory trees specified in the list.
 /// If any one of the trees is a subtree of another, it is ignored. Ex:
 /// Given `/a/b/c` and `/a/b` only `/a/b` will be watched.
-fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>) -> Vec<FileWatcher> {
+fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>) -> Result<Vec<FileWatcher>> {
     let actual_paths = get_paths(paths);
 
     let mut watchers = Vec::new();
@@ -48,7 +50,7 @@ fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>) -> Vec
         }
     }
 
-    watchers
+    Ok(watchers)
 }
 
 fn get_paths<P: AsRef<Path>>(paths: &[P]) -> HashSet<&Path> {
