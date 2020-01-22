@@ -38,16 +38,13 @@ impl Controller {
 /// Creates a vector of Watchers for all the directory trees specified in the list.
 /// If any one of the trees is a subtree of another, it is ignored. Ex:
 /// Given `/a/b/c` and `/a/b` only `/a/b` will be watched.
-fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>) -> Result<Vec<FileWatcher>> {
+fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>, watcher_duration: u64) -> Result<Vec<FileWatcher>> {
     let actual_paths = get_paths(paths);
 
     let mut watchers = Vec::new();
 
     for path in actual_paths {
-        match FileWatcher::new(&path, 2, watcher_tx.clone()) {
-            Ok(watcher) => watchers.push(watcher),
-            Err(err) => warn!("Failed to create watcher for path [{}]: {}", path.display(), err),
-        }
+        watchers.push(FileWatcher::new(&path, watcher_duration, watcher_tx.clone())?)
     }
 
     Ok(watchers)
