@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
@@ -24,6 +25,25 @@ pub struct FileWatcher {
 
 
 impl  FileWatcher {
+    /// Creates a vector of Watchers for all the directory trees specified in the list.
+    /// If any one of the trees is a subtree of another, it is ignored. Ex:
+    /// Given `/a/b/c` and `/a/b` only `/a/b` will be watched.
+    pub fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>, watcher_duration: u64) -> Result<Vec<FileWatcher>> {
+        let mut canonical_paths = Vec::new();
+
+        for path in paths {
+            canonical_paths.push(path.as_ref().canonicalize()?);
+        }
+
+        let mut watchers = Vec::new();
+
+        for path in paths {
+            watchers.push(Self::new(&path, watcher_duration, watcher_tx.clone())?)
+        }
+
+        Ok(watchers)
+    }
+
     pub fn new<P: AsRef<Path>>(path: &P, delay: u64, controller_tx: Sender<File>) -> Result<FileWatcher> {
         if !path.as_ref().is_dir() {
             return Err(Error::not_dir(path));
@@ -75,5 +95,61 @@ impl  FileWatcher {
             Err(err) => warn!("Failed to remove base path: {}", err),
         }
 
+    }
+}
+
+/// Gets the tree roots of the provided paths
+///
+/// The paths are expected to be canonical!
+fn get_paths<P: AsRef<Path>>(paths: &[P]) -> HashSet<&Path> {
+    let mut result = HashSet::new();
+
+    'outer: for cur_path in paths.iter().map(|x| x.as_ref()) {
+        for check_path in paths.iter().map(|x| x.as_ref()) {
+            if cur_path != check_path && cur_path.starts_with(check_path) {
+                continue 'outer;
+            }
+        }
+        result.insert(cur_path);
+    }
+
+    result
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use std::sync::mpsc::channel;
+    use super::FileWatcher;
+
+    #[test]
+    fn test_create_watchers_fails_with_missing_path() {
+        let paths = [Path::new("/some/path")];
+        let (watcher_tx, _) = channel();
+
+        assert!(FileWatcher::create_watchers(&paths, watcher_tx, 2).is_err());
+    }
+
+
+    #[test]
+    fn test_get_paths() {
+        use std::collections::HashSet;
+        use super::get_paths;
+
+        let paths = vec![
+            Path::new("/home/toto/tata"),
+            Path::new("/home/toto/"),
+            Path::new("/home/toto/titi"),
+            Path::new("/home/toto/titi"),
+            Path::new("/home/tutu/titi"),
+        ];
+
+        let mut expected_result = HashSet::new();
+        expected_result.insert(Path::new("/home/toto/"));
+        expected_result.insert(Path::new("/home/tutu/titi"));
+
+        let actual_result = get_paths(paths.as_ref());
+        assert_eq!(actual_result, expected_result);
     }
 }
