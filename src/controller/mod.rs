@@ -2,18 +2,17 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
-use log::{debug, warn, error};
 
 pub mod error;
 pub mod file;
 
 use crate::controller::file::File;
-use crate::controller::error::{Error, Result};
+use crate::controller::error::{Result};
 use crate::uploader::Uploader;
 use crate::watcher::FileWatcher;
 
 
-struct Controller {
+pub struct Controller {
     uploaders: Vec<Uploader>,
     watchers: Vec<FileWatcher>,
     watcher_rx: Receiver<File>,
@@ -91,6 +90,8 @@ mod tests {
             Path::new("/home/toto/titi"),
             Path::new("/home/toto/titi"),
             Path::new("/home/tutu/titi"),
+            Path::new("/home/tutu/./titi"),
+            Path::new("/home/tutu/../toto/tata"),
         ];
 
         let mut expected_result = HashSet::new();

@@ -1,7 +1,4 @@
-use std::{
-    error::Error as StdError,
-    result::Result as StdResult,
-};
+use std::{error::Error as StdError, result::Result as StdResult, fmt};
 
 use crate::watcher::error::Error as WatcherError;
 
@@ -15,5 +12,13 @@ pub enum Error {
 impl From<WatcherError> for Error {
     fn from(err: WatcherError) -> Self {
         Self::FileWatcher(err)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::FileWatcher(watcher_err) => write!(f, "Failed to start file watcher: {}", watcher_err),
+        }
     }
 }
