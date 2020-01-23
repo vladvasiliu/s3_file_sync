@@ -25,9 +25,6 @@ pub struct FileWatcher {
 
 
 impl  FileWatcher {
-    /// Creates a vector of Watchers for all the directory trees specified in the list.
-    /// If any one of the trees is a subtree of another, it is ignored. Ex:
-    /// Given `/a/b/c` and `/a/b` only `/a/b` will be watched.
     pub fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>, watcher_duration: u64) -> Result<Vec<FileWatcher>> {
         let mut canonical_paths = Vec::new();
 
@@ -103,7 +100,9 @@ impl  FileWatcher {
 
 /// Gets the tree roots of the provided paths
 ///
-/// The paths are expected to be canonical!
+/// If any one of the trees is a subtree of another, it is ignored. Ex:
+/// Given `/a/b/c` and `/a/b` only `/a/b` will be watched.
+/// For this to work, paths have to be canonical.
 fn get_paths<P: AsRef<Path>>(paths: &[P]) -> HashSet<&Path> {
     let mut result = HashSet::new();
 
@@ -128,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_create_watchers_fails_with_missing_path() {
-        let paths = [Path::new("/some/path")];
+        let paths = [Path::new("/some/missing/path/")];
         let (watcher_tx, _) = channel();
 
         assert!(FileWatcher::create_watchers(&paths, watcher_tx, 2).is_err());
