@@ -47,6 +47,13 @@ impl Uploader {
         }
     }
 
+    pub fn run(&self) {
+        loop {
+            info!("Uploader running");
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+    }
+
     pub fn upload_file(&self, filename: &str) -> Result<()> {
         let upload_id = self.create_multipart_upload(filename)?;
 

@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 base64 = { version = "0.11.0" }
 chrono = { version = "0.4", features = ["serde"] }
+crossbeam-channel = { version = "0.4" }
+crossbeam-utils = { version = "0.7" }
 fern = { version = "0.5" }
 log = { version = "0.4" }
 md5 = { version = "0.7.0"}

@@ -1,5 +1,9 @@
 use std::path::Path;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc;
+use crossbeam_channel::unbounded;
+use crossbeam_utils::thread;
+
+use log::{warn, info};
 
 
 pub mod error;
@@ -16,23 +20,29 @@ pub struct Controller {
 }
 
 impl Controller {
-    pub fn run<P: AsRef<Path>>(paths: &[P]) -> Result<()> {
-        let (watcher_tx, watcher_rx) = channel();
+    pub fn run<P: AsRef<Path>>(paths: &[P], duration: u64) -> Result<()> {
+        let (watcher_tx, watcher_rx) = unbounded();
+        let num_uploaders = 2;
+        let uploader = Uploader::new("test-s3-file-sync", "eu-west-3");
 
-        let uploaders = vec![
-            Uploader::new("test-s3-file-sync", "eu-west-3"),
-        ];
+        thread::scope(|s| {
+            for num in 1..=num_uploaders {
+                s.builder().name(format!("uploader {}", num)).spawn(|_| uploader.run()).unwrap();
+            }
 
-        let mut watchers = vec![];
+            for watcher in FileWatcher::create_watchers(paths, watcher_tx, duration).unwrap() {
+                s.builder().name(watcher.base_path.display().to_string()).spawn(move |_| watcher.run()).unwrap();
+            }
 
-        for watcher in FileWatcher::create_watchers(paths, watcher_tx, 2)? {
-            let watcher_thread = Builder::new().name(watcher.base_path.display().to_string()).spawn(move || watcher.run())?;
-            watchers.push(watcher_thread);
-        }
-
-        for thread in watchers {
-            thread.join();
-        }
+            loop {
+                match watcher_rx.recv() {
+                    Err(err) => warn!("Failed to receive file from watcher: {}", err),
+                    Ok(file) => {
+                        info!("Received file from watcher: {}", file);
+                    }
+                }
+            }
+        });
 
         Ok(())
     }

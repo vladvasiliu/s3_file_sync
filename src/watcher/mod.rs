@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
 
 use log::{debug, info, warn, error};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, DebouncedEvent};
+use crossbeam_channel::Sender;
 
 pub mod error;
 
@@ -25,7 +26,7 @@ pub struct FileWatcher {
 
 
 impl  FileWatcher {
-    pub fn create_watchers<P: AsRef<Path>>(paths: &[P], watcher_tx: Sender<File>, watcher_duration: u64) -> Result<Vec<FileWatcher>> {
+    pub fn create_watchers<P: AsRef<Path>>(paths: &[P], controller_tx: Sender<File>, watcher_duration: u64) -> Result<Vec<FileWatcher>> {
         let mut canonical_paths = Vec::new();
 
         for path in paths {
@@ -37,7 +38,7 @@ impl  FileWatcher {
         let mut watchers = Vec::new();
 
         for path in filtered_paths {
-            watchers.push(Self::new(&path, watcher_duration, watcher_tx.clone())?)
+            watchers.push(Self::new(&path, watcher_duration, controller_tx.clone())?)
         }
 
         Ok(watchers)
