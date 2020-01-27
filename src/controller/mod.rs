@@ -18,13 +18,14 @@ pub struct Controller {
 impl Controller {
     pub fn run<P: AsRef<Path>>(paths: &[P], duration: u64) -> Result<()> {
         let (watcher_tx, watcher_rx) = unbounded();
+        let (uploader_tx, uploader_rx) = unbounded();
         let num_uploaders = 2;
 
         let mut uploaders = vec![];
         let mut watchers = vec![];
 
         for num in 1..=num_uploaders {
-            let uploader = Uploader::new("test-s3-file-sync", "eu-west-3");
+            let uploader = Uploader::new("test-s3-file-sync", "eu-west-3", watcher_rx.clone());
             uploaders.push(Builder::new().name(format!("uploader {}", num)).spawn(move || uploader.run())?);
         }
 
@@ -36,7 +37,9 @@ impl Controller {
             match watcher_rx.recv() {
                 Err(err) => warn!("Failed to receive file from watcher: {}", err),
                 Ok(file) => {
-                    info!("Received file from watcher: {}", file);
+                    uploader_tx.send(file)
+                        .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err));
+                    info!("Channel length: {}", uploader_tx.len());
                 }
             }
         }

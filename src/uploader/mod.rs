@@ -7,7 +7,9 @@ use std::io::Read;
 use std::fs::File as FSFile;
 use std::str::FromStr;
 
-use log::{debug, warn, info, error};
+use crossbeam_channel::Receiver;
+
+use log::{debug, warn, info};
 use rusoto_core::Region;
 use rusoto_s3::{
     S3Client,
@@ -23,18 +25,19 @@ use rusoto_s3::{
 pub mod error;
 
 use crate::uploader::error::{Error, Result};
-
+use crate::controller::file::File;
 
 pub struct Uploader {
     bucket_name: String,
     s3_client: S3Client,
     request_payer: Option<String>,
     part_size: usize,
+    controller_rx: Receiver<File>,
 }
 
 
 impl Uploader {
-    pub fn new(bucket_name: &str, region_name: &str) -> Uploader {
+    pub fn new(bucket_name: &str, region_name: &str, controller_rx: Receiver<File>) -> Uploader {
         let region = Region::from_str(region_name).unwrap();
         let s3_client = S3Client::new(region);
         let bucket_name: String = bucket_name.into();
@@ -44,13 +47,20 @@ impl Uploader {
             s3_client,
             request_payer: None,
             part_size: 1024*1024*100, // 100 MB
+            controller_rx,
         }
     }
 
     pub fn run(&self) {
         loop {
-            info!("Uploader running");
-            std::thread::sleep(std::time::Duration::from_secs(2));
+            debug!("Waiting for file...");
+            match self.controller_rx.recv() {
+                Err(err) => warn!("Failed to receive file from controller: {}", err),
+                Ok(file) => {
+                    info!("Received file from controller: {}", file)
+                }
+            }
+            info!("Channel length: {}", self.controller_rx.len());
         }
     }
 
