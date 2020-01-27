@@ -10,7 +10,6 @@ edition = "2018"
 base64 = { version = "0.11.0" }
 chrono = { version = "0.4", features = ["serde"] }
 crossbeam-channel = { version = "0.4" }
-crossbeam-utils = { version = "0.7" }
 fern = { version = "0.5" }
 log = { version = "0.4" }
 md5 = { version = "0.7.0"}
@@ -18,5 +17,3 @@ notify = { version = "4.0.15" }
 rusoto_core = { version = "0.42.0" }
 rusoto_s3 = { version = "0.42.0" }
 rusqlite = { version = "0.21.0", features = ["bundled", "chrono"] }
-tokio = { version = "0.1.22" }
-#tokio = { version = "0.2", features = ["rt-core", "fs", "io-util"] }
