@@ -123,13 +123,13 @@ fn get_paths<P: AsRef<Path>>(paths: &[P]) -> HashSet<&Path> {
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-    use std::sync::mpsc::channel;
+    use crossbeam_channel::unbounded;
     use super::FileWatcher;
 
     #[test]
     fn test_create_watchers_fails_with_missing_path() {
         let paths = [Path::new("/some/missing/path/")];
-        let (watcher_tx, _) = channel();
+        let (watcher_tx, _) = unbounded();
 
         assert!(FileWatcher::create_watchers(&paths, watcher_tx, 2).is_err());
     }
