@@ -25,7 +25,7 @@ impl Controller {
         let mut watchers = vec![];
 
         for num in 1..=num_uploaders {
-            let uploader = Uploader::new("test-s3-file-sync", "eu-west-3", watcher_rx.clone());
+            let uploader = Uploader::new("test-s3-file-sync", "eu-west-3", uploader_rx.clone());
             uploaders.push(Builder::new().name(format!("uploader {}", num)).spawn(move || uploader.run())?);
         }
 
@@ -39,7 +39,6 @@ impl Controller {
                 Ok(file) => {
                     uploader_tx.send(file)
                         .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err));
-                    info!("Channel length: {}", uploader_tx.len());
                 }
             }
         }

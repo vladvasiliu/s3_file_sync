@@ -53,14 +53,12 @@ impl Uploader {
 
     pub fn run(&self) {
         loop {
-            debug!("Waiting for file...");
             match self.controller_rx.recv() {
                 Err(err) => warn!("Failed to receive file from controller: {}", err),
                 Ok(file) => {
                     info!("Received file from controller: {}", file)
                 }
             }
-            info!("Channel length: {}", self.controller_rx.len());
         }
     }
 
