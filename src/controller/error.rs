@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, result::Result as StdResult, fmt, io};
+use std::{result::Result as StdResult, fmt, io};
 
 use crate::watcher::error::Error as WatcherError;
 

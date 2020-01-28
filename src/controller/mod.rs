@@ -2,7 +2,7 @@ use std::path::Path;
 use std::thread::Builder;
 
 use crossbeam_channel::unbounded;
-use log::{warn, info};
+use log::{warn, error};
 
 pub mod error;
 pub mod file;
@@ -35,12 +35,16 @@ impl Controller {
 
         loop {
             match watcher_rx.recv() {
-                Err(err) => warn!("Failed to receive file from watcher: {}", err),
+                Err(err) => {
+                    error!("Failed to receive file from watcher: {}", err);
+                    break;
+                },
                 Ok(file) => {
                     uploader_tx.send(file)
                         .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err));
                 }
             }
         }
+        Ok(())
     }
 }

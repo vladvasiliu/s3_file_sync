@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use crossbeam_channel::Receiver;
 
-use log::{debug, warn, info};
+use log::{debug, info, warn, error};
 use rusoto_core::Region;
 use rusoto_s3::{
     S3Client,
@@ -54,7 +54,10 @@ impl Uploader {
     pub fn run(&self) {
         loop {
             match self.controller_rx.recv() {
-                Err(err) => warn!("Failed to receive file from controller: {}", err),
+                Err(err) => {
+                    error!("Failed to receive file from controller: {}", err);
+                    break;
+                },
                 Ok(file) => {
                     let filename = file.full_path().to_str().unwrap().to_owned();
                     match self.upload_file(&filename) {

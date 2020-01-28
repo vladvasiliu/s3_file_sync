@@ -1,5 +1,6 @@
 use log::{info, error};
 use std::thread;
+use crate::controller::Controller;
 
 mod controller;
 mod uploader;
@@ -9,7 +10,7 @@ fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    match controller::Controller::run(&["."], 2) {
+    match controller::Controller::run(&["./toto"], 2) {
         Ok(_) => info!("Running!"),
         Err(err) => error!("Failed to start controller: {}", err),
     }
