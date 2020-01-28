@@ -29,7 +29,7 @@ impl Controller {
             uploaders.push(Builder::new().name(format!("uploader {}", num)).spawn(move || uploader.run())?);
         }
 
-        for watcher in FileWatcher::create_watchers(paths, watcher_tx, duration).unwrap() {
+        for watcher in FileWatcher::create_watchers(paths, watcher_tx, duration)? {
             watchers.push(Builder::new().name(watcher.base_path.display().to_string()).spawn(move || watcher.run())?);
         }
 

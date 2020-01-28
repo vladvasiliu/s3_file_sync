@@ -56,7 +56,11 @@ impl Uploader {
             match self.controller_rx.recv() {
                 Err(err) => warn!("Failed to receive file from controller: {}", err),
                 Ok(file) => {
-                    info!("Received file from controller: {}", file)
+                    let filename = file.full_path().to_str().unwrap().to_owned();
+                    match self.upload_file(&filename) {
+                        Ok(_) => info!("Uploaded file {}", filename),
+                        Err(err) => warn!("Failed to upload file {}: {}", filename, err),
+                    }
                 }
             }
         }

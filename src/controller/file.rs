@@ -15,7 +15,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn full_path(&self) -> PathBuf {
+    pub fn full_path<'a>(self) -> PathBuf {
         self.base_path.join(&self.key)
     }
 }
