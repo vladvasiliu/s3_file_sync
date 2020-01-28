@@ -1,3 +1,4 @@
+use fern::colors::{Color, ColoredLevelConfig};
 use log::{info, error};
 use std::thread;
 use crate::controller::Controller;
@@ -17,12 +18,18 @@ fn main() {
 }
 
 fn setup_logger() -> Result<(), fern::InitError> {
+    let mut colors = ColoredLevelConfig::new()
+        .debug(Color::Cyan)
+        .info(Color::Green)
+        .warn(Color::Yellow)
+        .error(Color::Red);
+
     fern::Dispatch::new()
-        .format(|out, message, record| {
+        .format(move |out, message, record| {
             out.finish(format_args!(
                 "[ {} ][ {:5} ][ {:25} ][ {} ] {}",
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.level(),
+                colors.color(record.level()),
                 record.target(),
                 thread::current().name().unwrap(),
                 message
