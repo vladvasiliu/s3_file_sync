@@ -21,16 +21,15 @@ impl Controller {
         let (uploader_tx, uploader_rx) = unbounded();
         let num_uploaders = 2;
 
-        let mut uploaders = vec![];
-        let mut watchers = vec![];
-
+        // There's no need to hold handles to the threads,
+        // they are expected to stop when their respectives channels will be closed
         for num in 1..=num_uploaders {
             let uploader = Uploader::new("test-s3-file-sync", "eu-west-3", uploader_rx.clone());
-            uploaders.push(Builder::new().name(format!("uploader {}", num)).spawn(move || uploader.run())?);
+            Builder::new().name(format!("uploader {}", num)).spawn(move || uploader.run())?;
         }
 
         for watcher in FileWatcher::create_watchers(paths, watcher_tx, duration)? {
-            watchers.push(Builder::new().name(watcher.base_path.display().to_string()).spawn(move || watcher.run())?);
+            Builder::new().name(watcher.base_path.display().to_string()).spawn(move || watcher.run())?;
         }
 
         loop {

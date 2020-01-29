@@ -11,14 +11,14 @@ fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    match controller::Controller::run(&["./toto"], 2) {
+    match Controller::run(&["./toto"], 2) {
         Ok(_) => info!("Running!"),
         Err(err) => error!("Failed to start controller: {}", err),
     }
 }
 
 fn setup_logger() -> Result<(), fern::InitError> {
-    let mut colors = ColoredLevelConfig::new()
+    let colors = ColoredLevelConfig::new()
         .debug(Color::Cyan)
         .info(Color::Green)
         .warn(Color::Yellow)
