@@ -1,37 +1,38 @@
-use std::{
-    error::Error as StdError,
-    io::Error as IOError,
-    result::Result as StdResult,
-    fmt,
-};
+use std::{error::Error as StdError, fmt, io::Error as IOError, result::Result as StdResult};
 
 use rusoto_core::RusotoError;
-use rusoto_s3::{ CreateMultipartUploadError, CompleteMultipartUploadError, UploadPartError };
-
+use rusoto_s3::{CompleteMultipartUploadError, CreateMultipartUploadError, UploadPartError};
 
 pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
     CreateMultipartUpload(RusotoError<CreateMultipartUploadError>),
-    UploadPart { part_number: i64, error: RusotoError<UploadPartError> },
+    UploadPart {
+        part_number: i64,
+        error: RusotoError<UploadPartError>,
+    },
     CompleteMultipartUpload(RusotoError<CompleteMultipartUploadError>),
     Generic(String),
     Read(IOError),
 }
 
-
 impl StdError for Error {}
-
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::CreateMultipartUpload(err) => write!(f, "Failed to create multipart upload: {}", err),
-            Self::UploadPart{part_number, error} => write!(f, "Failed to upload part {}: {}", part_number, error),
-            Self::CompleteMultipartUpload(err) => write!(f, "Failed to complete multipart upload: {}", err),
+            Self::CreateMultipartUpload(err) => {
+                write!(f, "Failed to create multipart upload: {}", err)
+            }
+            Self::UploadPart { part_number, error } => {
+                write!(f, "Failed to upload part {}: {}", part_number, error)
+            }
+            Self::CompleteMultipartUpload(err) => {
+                write!(f, "Failed to complete multipart upload: {}", err)
+            }
             Self::Read(io_error) => write!(f, "Failed to read file: {}", io_error),
-            Self::Generic(msg) => write!(f, "Failed to upload file: {}", msg)
+            Self::Generic(msg) => write!(f, "Failed to upload file: {}", msg),
         }
     }
 }

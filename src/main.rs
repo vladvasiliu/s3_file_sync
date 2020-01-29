@@ -1,7 +1,7 @@
-use fern::colors::{Color, ColoredLevelConfig};
-use log::{info, error};
-use std::thread;
 use crate::controller::Controller;
+use fern::colors::{Color, ColoredLevelConfig};
+use log::{error, info};
+use std::thread;
 
 mod controller;
 mod uploader;
@@ -37,7 +37,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
         })
         .level(log::LevelFilter::Debug)
         .chain(std::io::stdout())
-//        .chain(fern::log_file("output.log")?)
+        //        .chain(fern::log_file("output.log")?)
         .apply()?;
     Ok(())
 }
