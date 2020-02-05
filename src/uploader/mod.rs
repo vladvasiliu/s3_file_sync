@@ -7,7 +7,7 @@ use std::fs::File as FSFile;
 use std::io::Read;
 use std::str::FromStr;
 
-use crossbeam_channel::Receiver;
+use crossbeam_channel::{Receiver, Sender};
 
 use log::{debug, info, warn};
 use rusoto_core::Region;
@@ -27,10 +27,16 @@ pub struct Uploader {
     request_payer: Option<String>,
     part_size: usize,
     controller_rx: Receiver<File>,
+    controller_tx: Sender<Result<File>>,
 }
 
 impl Uploader {
-    pub fn new(bucket_name: &str, region_name: &str, controller_rx: Receiver<File>) -> Uploader {
+    pub fn new(
+        bucket_name: &str,
+        region_name: &str,
+        controller_rx: Receiver<File>,
+        controller_tx: Sender<Result<File>>,
+    ) -> Uploader {
         let region = Region::from_str(region_name).unwrap();
         let s3_client = S3Client::new(region);
         let bucket_name: String = bucket_name.into();
@@ -41,6 +47,7 @@ impl Uploader {
             request_payer: None,
             part_size: 1024 * 1024 * 100, // 100 MB
             controller_rx,
+            controller_tx,
         }
     }
 
@@ -54,10 +61,8 @@ impl Uploader {
                 }
                 Ok(file) => {
                     let filename = file.full_path().to_str().unwrap().to_owned();
-                    match self.upload_file(&filename) {
-                        Ok(_) => info!("Uploaded file {}", filename),
-                        Err(err) => warn!("Failed to upload file {}: {}", filename, err),
-                    }
+                    let upload_result = self.upload_file(&filename).and(Ok(file));
+                    self.controller_tx.send(upload_result);
                 }
             }
         }

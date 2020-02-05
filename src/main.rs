@@ -11,7 +11,7 @@ fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    match Controller::run(&["./toto"], 2) {
+    match Controller::run(&["."], 2) {
         Ok(_) => info!("Running!"),
         Err(err) => error!("Failed to start controller: {}", err),
     }

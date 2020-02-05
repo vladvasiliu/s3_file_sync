@@ -16,13 +16,19 @@ pub struct Controller {}
 impl Controller {
     pub fn run<P: AsRef<Path>>(paths: &[P], duration: u64) -> Result<()> {
         let (watcher_tx, watcher_rx) = unbounded();
-        let (uploader_tx, uploader_rx) = unbounded();
+        let (ctl2upl_tx, ctl2upl_rx) = unbounded();
+        let (upl2ctl_tx, upl2ctl_rx) = unbounded();
         let num_uploaders = 2;
 
         // There's no need to hold handles to the threads,
-        // they are expected to stop when their respectives channels will be closed
+        // they are expected to stop when their respective channels will be closed
         for num in 1..=num_uploaders {
-            let uploader = Uploader::new("test-s3-file-sync", "eu-west-3", uploader_rx.clone());
+            let uploader = Uploader::new(
+                "test-s3-file-sync",
+                "eu-west-3",
+                ctl2upl_rx.clone(),
+                upl2ctl_tx.clone(),
+            );
             Builder::new()
                 .name(format!("uploader {}", num))
                 .spawn(move || uploader.run())?;
@@ -35,17 +41,21 @@ impl Controller {
         }
 
         loop {
-            match watcher_rx.recv() {
-                Err(err) => {
-                    error!("Failed to receive file from watcher: {}", err);
-                    break;
-                }
-                Ok(file) => {
-                    uploader_tx
-                        .send(file)
-                        .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err));
-                }
-            }
+            select! {
+                            recv(watcher_rx) -> msg => match msg {
+                                Err(err) => {
+                                    error!("Failed to receive file from watcher: {}", err);
+                                    break;
+                                }
+                                Ok(file) => {
+                                    warn!("Got file: {}", file)
+            //                        ctl2upl_tx
+            //                            .send(file)
+            //                            .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err));
+                                }
+                            }
+
+                        }
         }
         Ok(())
     }
