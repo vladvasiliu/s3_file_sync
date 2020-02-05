@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::thread::Builder;
 
-use crossbeam_channel::unbounded;
+use crossbeam_channel::{Select, unbounded};
 use log::{error, warn};
 
 pub mod error;
@@ -40,22 +40,28 @@ impl Controller {
                 .spawn(move || watcher.run())?;
         }
 
-        loop {
-            select! {
-                            recv(watcher_rx) -> msg => match msg {
-                                Err(err) => {
-                                    error!("Failed to receive file from watcher: {}", err);
-                                    break;
-                                }
-                                Ok(file) => {
-                                    warn!("Got file: {}", file)
-            //                        ctl2upl_tx
-            //                            .send(file)
-            //                            .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err));
-                                }
-                            }
+        let mut sel = Select::new();
+        let rcv_from_watcher = sel.recv(&watcher_rx);
+        let rcv_from_uploader = sel.recv(&upl2ctl_rx);
 
-                        }
+        loop {
+            let oper = sel.select();
+
+            match oper.index() {
+                i if i == rcv_from_watcher => match oper.recv(&watcher_rx) {
+                    Err(err) => {
+                        error!("Failed to receive file from watcher: {}", err);
+                        break;
+                    }
+                    Ok(file) => ctl2upl_tx
+                        .send(file)
+                        .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err)),
+                },
+                i if i == rcv_from_uploader => match oper.recv(&upl2ctl_rx) {
+                    _ => {}
+                }
+                _ => unreachable!(),
+            }
         }
         Ok(())
     }
