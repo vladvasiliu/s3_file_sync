@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::thread::Builder;
 
-use crossbeam_channel::{Select, unbounded};
-use log::{error, warn};
+use crossbeam_channel::{unbounded, Select};
+use log::{error, info, warn};
 
 pub mod error;
 pub mod file;
@@ -58,8 +58,13 @@ impl Controller {
                         .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err)),
                 },
                 i if i == rcv_from_uploader => match oper.recv(&upl2ctl_rx) {
-                    _ => {}
-                }
+                    Err(err) => {
+                        error!("Failed to receive from uploader: {}", err);
+                        break;
+                    }
+                    Ok(Err(err)) => warn!("Failed to upload file: {}", err),
+                    Ok(Ok(file)) => info!("File uploaded successfully: {}", file),
+                },
                 _ => unreachable!(),
             }
         }
