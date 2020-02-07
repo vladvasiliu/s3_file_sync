@@ -27,7 +27,7 @@ pub struct Uploader {
     request_payer: Option<String>,
     part_size: usize,
     controller_rx: Receiver<File>,
-    controller_tx: Sender<Result<File>>,
+    controller_tx: Sender<(File, Result<()>)>,
 }
 
 impl Uploader {
@@ -35,7 +35,7 @@ impl Uploader {
         bucket_name: &str,
         region_name: &str,
         controller_rx: Receiver<File>,
-        controller_tx: Sender<Result<File>>,
+        controller_tx: Sender<(File, Result<()>)>,
     ) -> Uploader {
         let region = Region::from_str(region_name).unwrap();
         let s3_client = S3Client::new(region);
@@ -61,9 +61,9 @@ impl Uploader {
                 }
                 Ok(file) => {
                     let filename = file.full_path().to_str().unwrap().to_owned();
-                    let upload_result = self.upload_file(&filename).and(Ok(file));
+                    let upload_result = self.upload_file(&filename);
                     self.controller_tx
-                        .send(upload_result)
+                        .send((file, upload_result))
                         .unwrap_or_else(|err| warn!("Failed to send file to controller: {}", err));
                 }
             }

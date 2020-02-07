@@ -59,11 +59,13 @@ impl Controller {
                 },
                 i if i == rcv_from_uploader => match oper.recv(&upl2ctl_rx) {
                     Err(err) => {
-                        error!("Failed to receive from uploader: {}", err);
+                        warn!("Failed to receive from uploader: {}", err);
                         break;
                     }
-                    Ok(Err(err)) => warn!("Failed to upload file: {}", err),
-                    Ok(Ok(file)) => info!("File uploaded successfully: {}", file),
+                    Ok((file, result)) => match result {
+                        Err(err) => warn!("Failed to upload {}: {}", file, err),
+                        Ok(()) => info!("Uploaded {}", file),
+                    },
                 },
                 _ => unreachable!(),
             }
