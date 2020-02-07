@@ -62,7 +62,9 @@ impl Uploader {
                 Ok(file) => {
                     let filename = file.full_path().to_str().unwrap().to_owned();
                     let upload_result = self.upload_file(&filename).and(Ok(file));
-                    self.controller_tx.send(upload_result);
+                    self.controller_tx
+                        .send(upload_result)
+                        .unwrap_or_else(|err| warn!("Failed to send file to controller: {}", err));
                 }
             }
         }
@@ -72,7 +74,9 @@ impl Uploader {
         let upload_id = self.create_multipart_upload(filename)?;
 
         self.upload_file_parts(filename, &upload_id)
-            .and_then(|c_mp_u| self.complete_multipart_upload(filename, c_mp_u, &upload_id))
+            .and_then(|multipart_upload| {
+                self.complete_multipart_upload(filename, multipart_upload, &upload_id)
+            })
             .or_else(|err| {
                 self.abort_multipart_upload(filename, &upload_id);
                 Err(err)
