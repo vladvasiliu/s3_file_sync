@@ -13,6 +13,7 @@ fn main() {
     info!("Starting S3 File Sync...");
 
     let config = config::Config::from_args();
+    info!("{}", config.pretty_string())
 
     //    match Controller::run(&["."], 2) {
     //        Ok(_) => info!("Running!"),

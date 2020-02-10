@@ -1,5 +1,4 @@
 use clap::{App, Arg};
-use std::fmt::{Formatter, Error};
 
 static DEFAULT_UPLOAD_SIZE: u64 = 100;
 static MAX_UPLOAD_SIZE: u64 = 1000;
@@ -101,6 +100,23 @@ impl Config {
             upload_part_size: matches.value_of("upload_size").unwrap().parse().unwrap(),
             watcher_delay: matches.value_of("watch_interval").unwrap().parse().unwrap(),
         }
+    }
+
+    pub fn pretty_string(&self) -> String {
+        let mut result = String::from("Supplied configuration:\n");
+        result.push_str("\tUploader:\n");
+        result.push_str(&format!("\t\tBucket name:\t{}\n", self.bucket_name));
+        result.push_str(&format!("\t\tThreads:\t{}\n", self.num_uploaders));
+        result.push_str(&format!("\t\tPart size:\t{} MB\n", self.upload_part_size));
+        result.push_str("\tWatcher:\n");
+        result.push_str(&format!("\t\tDelay:\t\t{}s\n", self.watcher_delay));
+        result.push_str("\t\tDirectories:\n");
+
+        for dir in &self.watched_dirs {
+            result.push_str(&format!("\t\t\t- {}\n", dir));
+        }
+
+        return result;
     }
 }
 
