@@ -100,11 +100,11 @@ impl FileWatcher {
             return;
         }
 
-        match path.strip_prefix(&self.base_path) {
+        match path.strip_prefix(&self.base_path.parent().unwrap()) {
             Ok(stripped_path) => {
                 debug!("Detected file: {}", stripped_path.display());
                 let file = File {
-                    base_path: self.base_path.to_owned(),
+                    full_path: path.to_owned(),
                     key: stripped_path.into(),
                 };
                 self.controller_tx.send(file).unwrap_or_else(|err| {

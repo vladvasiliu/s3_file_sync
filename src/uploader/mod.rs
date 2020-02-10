@@ -83,7 +83,7 @@ impl Uploader {
     }
 
     fn upload_file_parts(&self, file: &File, upload_id: &str) -> Result<CompletedMultipartUpload> {
-        let mut fs_file = FSFile::open(file.full_path())?;
+        let mut fs_file = FSFile::open(&file.full_path)?;
         let mut part_number = 0;
         let mut completed_parts: Vec<CompletedPart> = Vec::new();
 
