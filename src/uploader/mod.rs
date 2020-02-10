@@ -60,8 +60,7 @@ impl Uploader {
                     break;
                 }
                 Ok(file) => {
-                    let filename = file.full_path().to_str().unwrap().to_owned();
-                    let upload_result = self.upload_file(&filename);
+                    let upload_result = self.upload_file(&file);
                     self.controller_tx
                         .send((file, upload_result))
                         .unwrap_or_else(|err| warn!("Failed to send file to controller: {}", err));
@@ -70,25 +69,21 @@ impl Uploader {
         }
     }
 
-    pub fn upload_file(&self, filename: &str) -> Result<()> {
-        let upload_id = self.create_multipart_upload(filename)?;
+    fn upload_file(&self, file: &File) -> Result<()> {
+        let upload_id = self.create_multipart_upload(&file)?;
 
-        self.upload_file_parts(filename, &upload_id)
+        self.upload_file_parts(&file, &upload_id)
             .and_then(|multipart_upload| {
-                self.complete_multipart_upload(filename, multipart_upload, &upload_id)
+                self.complete_multipart_upload(&file, multipart_upload, &upload_id)
             })
             .or_else(|err| {
-                self.abort_multipart_upload(filename, &upload_id);
+                self.abort_multipart_upload(&file, &upload_id);
                 Err(err)
             })
     }
 
-    fn upload_file_parts(
-        &self,
-        filename: &str,
-        upload_id: &str,
-    ) -> Result<CompletedMultipartUpload> {
-        let mut file = FSFile::open(filename)?;
+    fn upload_file_parts(&self, file: &File, upload_id: &str) -> Result<CompletedMultipartUpload> {
+        let mut fs_file = FSFile::open(file.full_path())?;
         let mut part_number = 0;
         let mut completed_parts: Vec<CompletedPart> = Vec::new();
 
@@ -96,13 +91,13 @@ impl Uploader {
             let mut buffer = vec![0; self.part_size];
             part_number += 1;
 
-            match file.read(&mut buffer) {
+            match fs_file.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(len) => {
                     buffer.truncate(len);
                     completed_parts.push(self.upload_part(
                         buffer,
-                        filename,
+                        file.key.to_str().unwrap().into(),
                         part_number,
                         upload_id,
                     )?);
@@ -121,7 +116,7 @@ impl Uploader {
     fn upload_part(
         &self,
         body: Vec<u8>,
-        filename: &str,
+        key: &str,
         part_number: i64,
         upload_id: &str,
     ) -> Result<CompletedPart> {
@@ -136,7 +131,7 @@ impl Uploader {
                 content_length: Some(content_length),
                 content_md5: Some(content_md5),
                 bucket: self.bucket_name.to_owned(),
-                key: filename.to_owned(),
+                key: key.to_owned(),
                 upload_id: upload_id.to_owned(),
                 request_payer: self.request_payer.to_owned(),
                 ..Default::default()
@@ -157,14 +152,14 @@ impl Uploader {
 
     fn complete_multipart_upload(
         &self,
-        filename: &str,
+        file: &File,
         multipart_upload: CompletedMultipartUpload,
         upload_id: &str,
     ) -> Result<()> {
         self.s3_client
             .complete_multipart_upload(CompleteMultipartUploadRequest {
                 bucket: self.bucket_name.to_owned(),
-                key: filename.to_owned(),
+                key: file.key.to_str().unwrap().into(),
                 multipart_upload: Some(multipart_upload),
                 upload_id: upload_id.to_owned(),
                 request_payer: self.request_payer.to_owned(),
@@ -174,12 +169,12 @@ impl Uploader {
         Ok(())
     }
 
-    fn create_multipart_upload(&self, filename: &str) -> Result<String> {
+    fn create_multipart_upload(&self, file: &File) -> Result<String> {
         match self
             .s3_client
             .create_multipart_upload(CreateMultipartUploadRequest {
                 bucket: self.bucket_name.clone(),
-                key: filename.to_owned(),
+                key: file.key.to_str().unwrap().into(),
                 ..Default::default()
             })
             .sync()
@@ -192,21 +187,22 @@ impl Uploader {
         }
     }
 
-    fn abort_multipart_upload(&self, filename: &str, upload_id: &str) {
+    fn abort_multipart_upload(&self, file: &File, upload_id: &str) {
+        let key = file.key.to_str().unwrap().to_owned();
         match self
             .s3_client
             .abort_multipart_upload(AbortMultipartUploadRequest {
                 bucket: self.bucket_name.to_owned(),
-                key: filename.to_owned(),
+                key: key.to_owned(),
                 upload_id: upload_id.into(),
                 request_payer: self.request_payer.to_owned(),
             })
             .sync()
         {
-            Ok(_) => warn!("Aborted upload of {} (upload id: {})", filename, upload_id),
+            Ok(_) => warn!("Aborted upload of {} (upload id: {})", key, upload_id),
             Err(err) => warn!(
                 "Failed to abort upload of {} (upload id: {}): {}",
-                filename, upload_id, err
+                key, upload_id, err
             ),
         }
     }
