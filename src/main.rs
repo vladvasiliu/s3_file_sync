@@ -1,20 +1,23 @@
-use crate::controller::Controller;
+//use crate::controller::Controller;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::{error, info};
 use std::thread;
 
-mod controller;
-mod uploader;
-mod watcher;
+mod config;
+//mod controller;
+//mod uploader;
+//mod watcher;
 
 fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    match Controller::run(&["."], 2) {
-        Ok(_) => info!("Running!"),
-        Err(err) => error!("Failed to start controller: {}", err),
-    }
+    config::Config::from_args();
+
+    //    match Controller::run(&["."], 2) {
+    //        Ok(_) => info!("Running!"),
+    //        Err(err) => error!("Failed to start controller: {}", err),
+    //    }
 }
 
 fn setup_logger() -> Result<(), fern::InitError> {
