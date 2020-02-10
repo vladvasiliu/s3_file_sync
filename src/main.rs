@@ -12,7 +12,7 @@ fn main() {
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
 
-    config::Config::from_args();
+    let config = config::Config::from_args();
 
     //    match Controller::run(&["."], 2) {
     //        Ok(_) => info!("Running!"),

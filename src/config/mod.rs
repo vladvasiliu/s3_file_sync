@@ -1,6 +1,5 @@
-use clap::{App, Arg, ArgMatches};
-use log::info;
-use std::f32::MAX;
+use clap::{App, Arg};
+use std::fmt::{Formatter, Error};
 
 static DEFAULT_UPLOAD_SIZE: u64 = 100;
 static MAX_UPLOAD_SIZE: u64 = 1000;
@@ -14,6 +13,7 @@ pub struct Config {
     bucket_name: String,
     num_uploaders: u64,
     upload_part_size: u64,
+    watcher_delay: u64,
 }
 
 impl Config {
@@ -99,6 +99,7 @@ impl Config {
                 .parse()
                 .unwrap(),
             upload_part_size: matches.value_of("upload_size").unwrap().parse().unwrap(),
+            watcher_delay: matches.value_of("watch_interval").unwrap().parse().unwrap(),
         }
     }
 }
