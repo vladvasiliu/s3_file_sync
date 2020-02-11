@@ -1,3 +1,4 @@
+use rusqlite::Error as SQLError;
 use std::{fmt, io, result::Result as StdResult};
 
 use crate::watcher::error::Error as WatcherError;
@@ -8,6 +9,7 @@ pub type Result<T> = StdResult<T, Error>;
 pub enum Error {
     FileWatcher(WatcherError),
     IO(io::Error),
+    Database(SQLError),
 }
 
 impl From<WatcherError> for Error {
@@ -22,6 +24,12 @@ impl From<io::Error> for Error {
     }
 }
 
+impl From<SQLError> for Error {
+    fn from(err: SQLError) -> Self {
+        Self::Database(err)
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -29,6 +37,7 @@ impl fmt::Display for Error {
                 write!(f, "Failed to start file watcher: {}", watcher_err)
             }
             Self::IO(err) => write!(f, "I/O Error: {}", err),
+            Self::Database(err) => write!(f, "Database Error: {}", err),
         }
     }
 }

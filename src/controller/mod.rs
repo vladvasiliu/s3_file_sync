@@ -3,10 +3,12 @@ use std::thread::Builder;
 use crossbeam_channel::{unbounded, Select};
 use log::{error, info, warn};
 
+mod database;
 pub mod error;
 pub mod file;
 
 use crate::config::Config;
+use crate::controller::database::Database;
 use crate::controller::error::Result;
 use crate::uploader::Uploader;
 use crate::watcher::FileWatcher;
@@ -19,11 +21,13 @@ impl Controller {
         let (ctl2upl_tx, ctl2upl_rx) = unbounded();
         let (upl2ctl_tx, upl2ctl_rx) = unbounded();
 
+        let db = Database::open("db.sqlite3")?;
+
         // There's no need to hold handles to the threads,
         // they are expected to stop when their respective channels will be closed
         for num in 1..=config.num_uploaders {
             let uploader = Uploader::new(
-                "test-s3-file-sync",
+                &config.bucket_name,
                 "eu-west-3",
                 ctl2upl_rx.clone(),
                 upl2ctl_tx.clone(),
