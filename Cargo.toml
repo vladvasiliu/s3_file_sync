@@ -18,3 +18,7 @@ notify = { version = "~4.0.15" }
 rusoto_core = { version = "~0.42.0" }
 rusoto_s3 = { version = "~0.42.0" }
 rusqlite = { version = "~0.21.0", features = ["bundled", "chrono"] }
+
+
+[dev-dependencies]
+proptest = { version = "~0.9.5" }

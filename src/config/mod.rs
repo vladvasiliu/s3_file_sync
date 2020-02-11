@@ -116,7 +116,7 @@ impl Config {
             result.push_str(&format!("\t\t\t- {}\n", dir));
         }
 
-        return result;
+        result
     }
 }
 
@@ -139,8 +139,9 @@ fn upload_size_between_bounds(num: String) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::int_gte_1;
-    use crate::config::{upload_size_between_bounds, MAX_UPLOAD_SIZE, MIN_UPLOAD_SIZE};
+    use super::{int_gte_1, upload_size_between_bounds, MAX_UPLOAD_SIZE, MIN_UPLOAD_SIZE};
+
+    use proptest::prelude::*;
 
     #[test]
     fn test_int_gte_1_works_for_1_to_10() {
@@ -182,5 +183,19 @@ mod tests {
             let num = format!("{}", x);
             assert_eq!(upload_size_between_bounds(num).is_err(), true);
         }
+    }
+
+    #[test]
+    fn int_gte_1_doesnt_crash() {
+        proptest!(|(s in "\\PC*")| {
+            int_gte_1(s).ok();
+        } );
+    }
+
+    #[test]
+    fn upload_size_between_bounds_doesnt_crash() {
+        proptest!(|(s in "\\PC*")| {
+            upload_size_between_bounds(s).ok();
+        } );
     }
 }

@@ -1,6 +1,6 @@
 //use crate::controller::Controller;
 use fern::colors::{Color, ColoredLevelConfig};
-use log::{error, info};
+use log::info;
 use std::thread;
 
 mod config;
