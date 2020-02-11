@@ -1,30 +1,29 @@
-//use crate::controller::Controller;
+use crate::controller::Controller;
 use fern::colors::{Color, ColoredLevelConfig};
-use log::info;
+use log::{error, info};
 use std::thread;
 
 mod config;
-//mod controller;
-//mod uploader;
-//mod watcher;
+mod controller;
+mod uploader;
+mod watcher;
 
 fn main() {
+    let config = config::Config::from_args();
     setup_logger().unwrap();
     info!("Starting S3 File Sync...");
+    info!("{}", config.pretty_string());
 
-    let config = config::Config::from_args();
-    info!("{}", config.pretty_string())
-
-    //    match Controller::run(&["."], 2) {
-    //        Ok(_) => info!("Running!"),
-    //        Err(err) => error!("Failed to start controller: {}", err),
-    //    }
+    match Controller::run(config) {
+        Ok(_) => info!("Running!"),
+        Err(err) => error!("Failed to start controller: {}", err),
+    }
 }
 
 fn setup_logger() -> Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::new()
         .debug(Color::Cyan)
-        .info(Color::Green)
+        .info(Color::Blue)
         .warn(Color::Yellow)
         .error(Color::Red);
 

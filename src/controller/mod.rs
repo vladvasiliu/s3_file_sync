@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::thread::Builder;
 
 use crossbeam_channel::{unbounded, Select};
@@ -7,6 +6,7 @@ use log::{error, info, warn};
 pub mod error;
 pub mod file;
 
+use crate::config::Config;
 use crate::controller::error::Result;
 use crate::uploader::Uploader;
 use crate::watcher::FileWatcher;
@@ -14,15 +14,14 @@ use crate::watcher::FileWatcher;
 pub struct Controller {}
 
 impl Controller {
-    pub fn run<P: AsRef<Path>>(paths: &[P], duration: u64) -> Result<()> {
+    pub fn run(config: Config) -> Result<()> {
         let (watcher_tx, watcher_rx) = unbounded();
         let (ctl2upl_tx, ctl2upl_rx) = unbounded();
         let (upl2ctl_tx, upl2ctl_rx) = unbounded();
-        let num_uploaders = 2;
 
         // There's no need to hold handles to the threads,
         // they are expected to stop when their respective channels will be closed
-        for num in 1..=num_uploaders {
+        for num in 1..=config.num_uploaders {
             let uploader = Uploader::new(
                 "test-s3-file-sync",
                 "eu-west-3",
@@ -34,7 +33,9 @@ impl Controller {
                 .spawn(move || uploader.run())?;
         }
 
-        for watcher in FileWatcher::create_watchers(paths, watcher_tx, duration)? {
+        for watcher in
+            FileWatcher::create_watchers(&config.watched_dirs, watcher_tx, config.watcher_delay)?
+        {
             Builder::new()
                 .name(watcher.base_path.display().to_string())
                 .spawn(move || watcher.run())?;

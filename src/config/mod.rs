@@ -1,4 +1,4 @@
-use clap::{App, Arg};
+use clap::{App, AppSettings, Arg};
 
 static DEFAULT_UPLOAD_SIZE: u64 = 100;
 static MAX_UPLOAD_SIZE: u64 = 1000;
@@ -8,11 +8,11 @@ static DEFAULT_WATCHER_INTERVAL: u64 = 2;
 static MIN_WATCHER_INTERVAL: u64 = 1;
 
 pub struct Config {
-    watched_dirs: Vec<String>,
-    bucket_name: String,
-    num_uploaders: u64,
-    upload_part_size: u64,
-    watcher_delay: u64,
+    pub watched_dirs: Vec<String>,
+    pub bucket_name: String,
+    pub num_uploaders: u64,
+    pub upload_part_size: u64,
+    pub watcher_delay: u64,
 }
 
 impl Config {
@@ -24,6 +24,7 @@ impl Config {
             .version("0.0.1")
             .author("Vlad Vasiliu")
             .about("Sync directories to S3")
+            .settings(&[AppSettings::ColoredHelp, AppSettings::ColorAuto])
             .arg(
                 Arg::with_name("watch_dir")
                     .short("w")
@@ -41,7 +42,7 @@ impl Config {
                     .long("watcher-interval")
                     .value_name("DURATION")
                     .help(&format!(
-                        "Seconds between file change notifications. Must be at least {}",
+                        "File change notifications interval. Must be at least {}",
                         MIN_WATCHER_INTERVAL
                     ))
                     .takes_value(true)
