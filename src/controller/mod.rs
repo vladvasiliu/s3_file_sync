@@ -60,11 +60,10 @@ impl Controller {
                         break;
                     }
                     Ok(file) => match db.add_file(&file) {
-                        Ok(1) => ctl2upl_tx.send(file).unwrap_or_else(|err| {
+                        Ok(_) => ctl2upl_tx.send(file).unwrap_or_else(|err| {
                             warn!("Failed to send file to uploader: {}", err)
                         }),
                         Err(err) => warn!("{}", err),
-                        Ok(x) => warn!("Inserted unexepected number of files: {}", x),
                     },
                 },
                 i if i == rcv_from_uploader => match oper.recv(&upl2ctl_rx) {

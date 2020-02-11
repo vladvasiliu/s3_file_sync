@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use log::{trace, warn};
-use rusqlite::{params, Connection, OpenFlags, Result, Row, NO_PARAMS};
+use rusqlite::{params, Connection, OpenFlags, Result, Row, NO_PARAMS, Statement};
 
 use crate::controller::file::File;
 
@@ -38,11 +38,9 @@ impl Database {
         )
     }
 
-    pub fn add_file(&self, file: &File) -> Result<usize> {
-        self.connection.execute(
-            "INSERT INTO File (path) values (?1)",
-            params![&file.full_path.to_str().unwrap()],
-        )
+    pub fn add_file(&self, file: &File) -> Result<i64> {
+        let mut statement = self.connection.prepare_cached("INSERT INTO File (path) values (?1)")?;
+        statement.insert(&[file.full_path.to_str().unwrap()])
     }
 
     //    pub fn populate(&mut self) -> Result<()> {
