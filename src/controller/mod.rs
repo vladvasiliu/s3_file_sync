@@ -1,6 +1,6 @@
 use std::thread::Builder;
 
-use crossbeam_channel::{unbounded, Select};
+use crossbeam_channel::{unbounded, Receiver, Select};
 use log::{error, info, warn};
 
 mod database;
@@ -10,6 +10,7 @@ pub mod file;
 use crate::config::Config;
 use crate::controller::database::Database;
 use crate::controller::error::Result;
+use crate::controller::file::File;
 use crate::uploader::Uploader;
 use crate::watcher::FileWatcher;
 
@@ -58,9 +59,13 @@ impl Controller {
                         error!("Failed to receive file from watcher: {}", err);
                         break;
                     }
-                    Ok(file) => ctl2upl_tx
-                        .send(file)
-                        .unwrap_or_else(|err| warn!("Failed to send file to uploader: {}", err)),
+                    Ok(file) => match db.add_file(&file) {
+                        Ok(1) => ctl2upl_tx.send(file).unwrap_or_else(|err| {
+                            warn!("Failed to send file to uploader: {}", err)
+                        }),
+                        Err(err) => warn!("{}", err),
+                        Ok(x) => warn!("Inserted unexepected number of files: {}", x),
+                    },
                 },
                 i if i == rcv_from_uploader => match oper.recv(&upl2ctl_rx) {
                     Err(err) => {
