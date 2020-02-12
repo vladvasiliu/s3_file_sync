@@ -64,6 +64,14 @@ impl Database {
         }
     }
 
+    pub fn add_upload_date(&self, file: &File) -> Result<()> {
+        let mut statement = self
+            .connection
+            .prepare_cached("UPDATE File SET uploaded_date = DATETIME('now') WHERE path = (?1)")?;
+        statement.execute(&[file.full_path.to_str().unwrap()])?;
+        Ok(())
+    }
+
     //    pub fn populate(&mut self) -> Result<()> {
     //        let tx = self.connection.transaction()?;
     //        {
