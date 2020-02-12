@@ -60,8 +60,7 @@ impl Uploader {
                     break;
                 }
                 Ok(file) => {
-                    //                    let upload_result = self.upload_file(&file);
-                    let upload_result = Ok(());
+                    let upload_result = self.upload_file(&file);
                     self.controller_tx
                         .send((file, upload_result))
                         .unwrap_or_else(|err| warn!("Failed to send file to controller: {}", err));

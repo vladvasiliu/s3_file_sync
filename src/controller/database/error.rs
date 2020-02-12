@@ -1,4 +1,3 @@
-use libsqlite3_sys::{Error as LibSQLError, ErrorCode as LibSQLErrorCode};
 use rusqlite::Error as SQLError;
 use std::{error::Error as StdError, fmt, result::Result as StdResult};
 

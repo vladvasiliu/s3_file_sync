@@ -1,6 +1,6 @@
 use std::thread::Builder;
 
-use crossbeam_channel::{unbounded, Receiver, Select};
+use crossbeam_channel::{unbounded, Select};
 use log::{debug, error, info, warn};
 
 mod database;
@@ -10,7 +10,6 @@ pub mod file;
 use crate::config::Config;
 use crate::controller::database::{error::Error as DBError, Database};
 use crate::controller::error::Result;
-use crate::controller::file::File;
 use crate::uploader::Uploader;
 use crate::watcher::FileWatcher;
 

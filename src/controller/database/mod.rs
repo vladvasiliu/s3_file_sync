@@ -1,8 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use libsqlite3_sys::{Error as LibSQLError, ErrorCode as LibSQLErrorCode};
-use log::{trace, warn};
-use rusqlite::{params, Connection, Error as SQLError, OpenFlags, Row, Statement, NO_PARAMS};
+use rusqlite::{Connection, Error as SQLError, OpenFlags};
 
 use crate::controller::file::File;
 
@@ -46,7 +45,7 @@ impl Database {
     pub fn add_file(&self, file: &File) -> Result<()> {
         let mut statement = self
             .connection
-            .prepare_cached("INSERT INTO File (path) values (?1)")?;
+            .prepare_cached("INSERT INTO File (path) VALUES (?1)")?;
         match statement.insert(&[file.full_path.to_str().unwrap()]) {
             Ok(_) => Ok(()),
             Err(
