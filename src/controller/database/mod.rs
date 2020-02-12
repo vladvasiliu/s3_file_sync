@@ -1,9 +1,13 @@
 use std::path::{Path, PathBuf};
 
+use libsqlite3_sys::{Error as LibSQLError, ErrorCode as LibSQLErrorCode};
 use log::{trace, warn};
-use rusqlite::{params, Connection, OpenFlags, Result, Row, NO_PARAMS, Statement};
+use rusqlite::{params, Connection, Error as SQLError, OpenFlags, Row, Statement, NO_PARAMS};
 
 use crate::controller::file::File;
+
+pub mod error;
+use error::{Error, Result};
 
 pub struct Database {
     connection: Connection,
@@ -35,12 +39,29 @@ impl Database {
                   CREATE INDEX IF NOT EXISTS file_not_deleted ON File ( deleted_date )
                           WHERE deleted_date IS NULL and uploaded_date IS NOT NULL;
               COMMIT;",
-        )
+        )?;
+        Ok(())
     }
 
-    pub fn add_file(&self, file: &File) -> Result<i64> {
-        let mut statement = self.connection.prepare_cached("INSERT INTO File (path) values (?1)")?;
-        statement.insert(&[file.full_path.to_str().unwrap()])
+    pub fn add_file(&self, file: &File) -> Result<()> {
+        let mut statement = self
+            .connection
+            .prepare_cached("INSERT INTO File (path) values (?1)")?;
+        match statement.insert(&[file.full_path.to_str().unwrap()]) {
+            Ok(_) => Ok(()),
+            Err(
+                err
+                @
+                SQLError::SqliteFailure(
+                    LibSQLError {
+                        code: LibSQLErrorCode::ConstraintViolation,
+                        ..
+                    },
+                    ..,
+                ),
+            ) => Err(Error::FileExists(err)),
+            Err(err) => Err(Error::Unhandled(err)),
+        }
     }
 
     //    pub fn populate(&mut self) -> Result<()> {

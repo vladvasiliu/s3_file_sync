@@ -1,6 +1,6 @@
-use rusqlite::Error as SQLError;
 use std::{fmt, io, result::Result as StdResult};
 
+use crate::controller::database::error::Error as DBError;
 use crate::watcher::error::Error as WatcherError;
 
 pub type Result<T> = StdResult<T, Error>;
@@ -9,7 +9,7 @@ pub type Result<T> = StdResult<T, Error>;
 pub enum Error {
     FileWatcher(WatcherError),
     IO(io::Error),
-    Database(SQLError),
+    Database(DBError),
 }
 
 impl From<WatcherError> for Error {
@@ -24,8 +24,8 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<SQLError> for Error {
-    fn from(err: SQLError) -> Self {
+impl From<DBError> for Error {
+    fn from(err: DBError) -> Self {
         Self::Database(err)
     }
 }

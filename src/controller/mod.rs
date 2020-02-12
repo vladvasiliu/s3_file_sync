@@ -1,14 +1,14 @@
 use std::thread::Builder;
 
 use crossbeam_channel::{unbounded, Receiver, Select};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 
 mod database;
 pub mod error;
 pub mod file;
 
 use crate::config::Config;
-use crate::controller::database::Database;
+use crate::controller::database::{error::Error as DBError, Database};
 use crate::controller::error::Result;
 use crate::controller::file::File;
 use crate::uploader::Uploader;
@@ -63,7 +63,11 @@ impl Controller {
                         Ok(_) => ctl2upl_tx.send(file).unwrap_or_else(|err| {
                             warn!("Failed to send file to uploader: {}", err)
                         }),
-                        Err(err) => warn!("{}", err),
+                        Err(DBError::FileExists(err)) => {
+                            warn!("Attempted to insert known file: {}", file);
+                            debug!("Failed to add file `{}` to db: {}", file, err);
+                        }
+                        Err(err) => error!("Unexpected database error: {}", err),
                     },
                 },
                 i if i == rcv_from_uploader => match oper.recv(&upl2ctl_rx) {
