@@ -77,7 +77,7 @@ impl Controller {
                     }
                     Ok((file, result)) => match result {
                         Err(err) => warn!("Failed to upload {}: {}", file, err),
-                        Ok(()) => match db.add_upload_date(&file) {
+                        Ok(()) => match db.set_upload_date(&file) {
                             Ok(()) => info!("Uploaded {}", file),
                             Err(err) => {
                                 error!("Uploaded file but failed to update database: {}", err)

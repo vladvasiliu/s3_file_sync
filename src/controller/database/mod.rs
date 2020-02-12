@@ -64,7 +64,7 @@ impl Database {
         }
     }
 
-    pub fn add_upload_date(&self, file: &File) -> Result<()> {
+    pub fn set_upload_date(&self, file: &File) -> Result<()> {
         let mut statement = self
             .connection
             .prepare_cached("UPDATE File SET uploaded_date = DATETIME('now') WHERE path = (?1)")?;
